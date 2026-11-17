@@ -1,0 +1,6 @@
+BODEGA PWA - COMO ACTUALIZAR
+1) Cuando tengas una Bodega.html nueva: renombrala a index.html.
+2) En GitHub: repositorio "bodega" > Add file > Upload files > sube SOLO index.html > Commit changes.
+3) En 1-2 minutos Chrome/la app instalada muestra la version nueva (network-first). Cierra y abre la app si no.
+No tocar manifest.json, sw.js ni los iconos. Nunca subir datos_despachos.json.
+IMPORTANTE: no escribir la API_KEY en el HTML publicado (repo publico).
