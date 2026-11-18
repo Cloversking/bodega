@@ -162,6 +162,10 @@ function normalizar(x){
   x.turnos = Object.assign({ ref: { lunes: '2026-11-16', manana: 'A' }, horario: { manana: { e: '08:30', c: '12:30', s: '16:30' }, tarde: { e: '10:30', c: '14:00', s: '20:00' }, tardeSab: { e: '11:00', c: '14:00', s: '20:00' }, domingo: { e: '10:00', c: '14:00', s: '18:00' }, colMin: 60 }, cambios: {} }, x.turnos || {});
   if (!x.turnos.v2){ x.turnos.horario = { manana: { e: '08:30', c: '12:30', s: '16:30' }, tarde: { e: '10:30', c: '14:00', s: '20:00' }, tardeSab: { e: '11:00', c: '14:00', s: '20:00' }, domingo: { e: '10:00', c: '14:00', s: '18:00' }, colMin: 60 }; x.turnos.v2 = true; } // horarios del contrato (turno 1 y 2)
   if (!x.turnos.horario.tardeSab) x.turnos.horario.tardeSab = { ...x.turnos.horario.tarde };
+  /* v3 (18-11-2026): calendario desde el 09-11-2026, periodo previo a la apertura con horario único y turnos definitivos bloqueables. Se limpian los datos de prueba del calendario (los cambios a mano). */
+  if (!x.turnos.v3){ x.turnos.cambios = {}; delete x.turnos.ref; x.turnos.def = null; x.turnos.v3 = true; }
+  x.turnos.def = x.turnos.def || null; x.turnos.asist = x.turnos.asist || {};
+  x.turnos.pre = Object.assign({}, { lj: { e: '08:00', c: '14:00', s: '17:30' }, vi: { e: '08:00', c: '14:00', s: '17:00' } }, x.turnos.pre || {});
   x.ruta.items = x.ruta.items.filter(id => x.despachos.some(d => d.id === id));
   return x;
 }
@@ -1533,7 +1537,7 @@ function vPersonal(){
   <details class="noprint" style="margin:8px 0"><summary style="cursor:pointer;color:var(--az)">Dotación definitiva por cargo</summary><table style="width:auto;margin-top:6px"><thead><tr><th>Cargo</th><th>Dotación</th><th>Asignados</th><th>Pendientes</th></tr></thead><tbody>${resumen}</tbody></table></details>
   <table style="margin-top:8px"><thead><tr><th>#</th>${[['nombre', 'Nombre'], ['cargo', 'Cargo'], ['turno', 'Turno'], ['descanso', 'Día de descanso'], ['telefono', 'Teléfono']].map(([k, l]) => `<th style="cursor:pointer;user-select:none;white-space:nowrap" title="Ordenar por ${l.toLowerCase()}" onclick="sortP('${k}')">${l} ${PSORT && PSORT.k === k ? (PSORT.d === 1 ? '▲' : '▼') : '<span style="opacity:.3">↕</span>'}</th>`).join('')}<th class="noprint">${PSORT ? '<button class="bx" title="Volver al orden manual" onclick="PSORT=null;vPersonal()">↺</button>' : ''}</th></tr></thead><tbody>
   ${filasP().map(({ p, i }, n) => `<tr><td>${n + 1}</td><td><input value="${esc(p.nombre)}" ${p.pendiente ? 'style="font-style:italic;opacity:.75" onfocus="this.select()" oninput="if(this.value.trim()&&!/^\\s*pendiente/i.test(this.value)){this.style.fontStyle=\'normal\';this.style.opacity=1}"' : ''} onchange="S.personal[${i}].nombre=this.value;if(S.personal[${i}].pendiente&&this.value.trim()&&!/^\s*pendiente/i.test(this.value))delete S.personal[${i}].pendiente;guardar();vPersonal()"></td>
-    <td>${sel(i, 'cargo', CARGOS)}</td><td style="width:70px">${sel(i, 'turno', ['A','B'])}</td><td>${sel(i, 'descanso', DIAS.slice(0, 5))}${!p.descanso ? ' <span class="warn" title="sin día de descanso">⚠</span>' : ''}</td>
+    <td>${sel(i, 'cargo', CARGOS)}</td><td style="width:70px">${sel(i, 'turno', ['A','B'])}</td><td>${S.turnos.def && p.descanso ? `<b>${p.descanso}</b> <span title="Bloqueado: los turnos definitivos ya están creados. El día libre solo se mueve semana a semana en el calendario.">🔒</span>` : sel(i, 'descanso', DIAS.slice(0, 5))}${!p.descanso ? ' <span class="warn" title="sin día de descanso">⚠</span>' : ''}</td>
     <td><input value="${esc(p.telefono || '')}" onchange="S.personal[${i}].telefono=this.value;guardar()"></td>
     <td class="noprint" style="white-space:nowrap">${PSORT ? '' : `<button class="bx" title="Subir" onclick="moverP(${i},-1)">▲</button><button class="bx" title="Bajar" onclick="moverP(${i},1)">▼</button> `}<button class="bx" title="Eliminar" onclick="if(confirm('¿Eliminar a ${esc(p.nombre).replace(/'/g, '')}?')){S.personal.splice(${i},1);guardar();vPersonal()}">✕</button></td></tr>`).join('')}
   </tbody></table>
@@ -1547,13 +1551,19 @@ let SEMANA = null; // fecha (lunes) que se está viendo, 'AAAA-MM-DD'
 const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const deIso = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
 function lunesDe(d){ const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; }
+const TURNO_MIN = '2026-11-09'; // el calendario parte este día
+const fechaDia = (lunesIso, d) => { const x = deIso(lunesIso); x.setDate(x.getDate() + d); return iso(x); };
+const esDef = di => !!S.turnos.def && di >= S.turnos.def.inicio;
+const semanaPre = lunesIso => !S.turnos.def || fechaDia(lunesIso, 6) < S.turnos.def.inicio; // semana completa antes de los turnos definitivos
 function grupoManana(lunesIso){
-  const ref = S.turnos.ref; const sem = Math.round((deIso(lunesIso) - deIso(ref.lunes)) / (7 * 864e5));
-  return Math.abs(sem) % 2 === 0 ? ref.manana : (ref.manana === 'A' ? 'B' : 'A');
+  const D = S.turnos.def; if (!D) return 'A';
+  const sem = Math.round((deIso(lunesIso) - lunesDe(deIso(D.inicio))) / (7 * 864e5));
+  return Math.abs(sem) % 2 === 0 ? D.manana : (D.manana === 'A' ? 'B' : 'A');
 }
 const minutos = h => { const [a, b] = String(h || '0:0').split(':').map(Number); return a * 60 + (b || 0); };
 /* horario normal (sin cambios a mano) de un trabajador un día de la semana */
-function horarioBase(p, d, gm){
+function horarioBase(p, d, gm, di){
+  if (!esDef(di)){ if (d >= 5) return { libre: true }; const P = S.turnos.pre; return { ...(d === 4 ? P.vi : P.lj) }; } // antes de los turnos definitivos: horario único
   if (p.descanso && p.descanso === DIAS[d]) return { libre: true };
   const H = S.turnos.horario, man = p.turno === gm;
   if (d === 6) return man ? { ...H.domingo } : { libre: true };
@@ -1563,64 +1573,100 @@ function horarioDia(p, d, lunesIso){
   const gm = grupoManana(lunesIso);
   const cam = ((S.turnos.cambios[lunesIso] || {})[p.id] || {})[d];
   if (cam) return { ...cam, cambiado: true };
-  const h = horarioBase(p, d, gm);
+  const di = fechaDia(lunesIso, d), h = horarioBase(p, d, gm, di);
   // supervisor: si el supervisor del otro turno está libre, hace las dos jornadas
-  if (!h.libre && p.cargo === 'Supervisor'){
+  if (!h.libre && esDef(di) && p.cargo === 'Supervisor'){
     const otroLibre = S.personal.some(o => o.id !== p.id && o.cargo === 'Supervisor' && o.turno !== p.turno && horarioDia_simple(o, d, lunesIso, gm).libre);
     if (otroLibre){ const H = S.turnos.horario; return d === 6 ? { ...H.domingo, doble: true } : { e: H.manana.e, c: h.c, s: H.tarde.s, doble: true }; }
   }
   return h;
 }
-function horarioDia_simple(p, d, lunesIso, gm){ const cam = ((S.turnos.cambios[lunesIso] || {})[p.id] || {})[d]; return cam || horarioBase(p, d, gm); }
+function horarioDia_simple(p, d, lunesIso, gm){ const cam = ((S.turnos.cambios[lunesIso] || {})[p.id] || {})[d]; return cam || horarioBase(p, d, gm, fechaDia(lunesIso, d)); }
 function horasSemana(p, lunesIso){
   let m = 0; for (let d = 0; d < 7; d++){ const h = horarioDia(p, d, lunesIso); if (!h.libre && h.e && h.s) m += minutos(h.s) - minutos(h.e) - (h.c ? S.turnos.horario.colMin : 0); }
   return m / 60;
 }
+const ASIST_T = { falta: 'FALTA', licencia: 'LICENCIA', vacaciones: 'VACACIONES', permiso: 'PERMISO', libre: 'NO TRABAJÓ' };
+const ddmmx = x => `${String(x.getDate()).padStart(2, '0')}-${String(x.getMonth() + 1).padStart(2, '0')}`;
+function confTurnosHtml(){
+  const T = S.turnos, H = T.horario, P = T.pre, D = T.def, hoy = iso(new Date());
+  const fila = (l, o, path) => `<tr><td>${l}</td>${['e', 'c', 's'].map(x => `<td><input type="time" value="${o[x]}" onchange="${path}.${x}=this.value;guardar();vTurnos()"></td>`).join('')}</tr>`;
+  const cab = '<thead><tr><th>Jornada</th><th>Entrada</th><th>Colación</th><th>Salida</th></tr></thead>';
+  const ini0 = iso(lunesDe(new Date(Math.max(Date.now(), deIso(TURNO_MIN))))) ;
+  const def = D ? `<div style="background:#ecfdf5;border:1px solid #86efac;border-radius:8px;padding:8px 10px;margin:8px 0">🔒 <b>Turnos definitivos creados</b> — parten el <b>${D.inicio.split('-').reverse().join('-')}</b>; en la semana de partida el turno de mañana es el <b>${D.manana}</b> (después se alterna solo cada semana).<br><span class="muted">Esto ya no se puede cambiar desde la app (si hay que modificarlo, se pide aparte). Solo puedes cambiar las horas de cada turno y, en el calendario, el día libre de un trabajador una semana puntual. El día de descanso de cada trabajador en Personal queda fijo.</span></div>`
+    : `<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:8px 10px;margin:8px 0"><b>Crear los turnos definitivos</b> (se hace una sola vez)
+      <div class="row" style="margin-top:6px"><label>Parten el día<input type="date" id="defIni" min="${TURNO_MIN}" value="${ini0}"></label>
+      <label>Ese día el turno de mañana es<select id="defMan"><option>A</option><option>B</option></select></label>
+      <button class="b" onclick="crearTurnoDef()">Crear turnos definitivos</button></div>
+      <span class="muted">Mientras no los crees, todos trabajan el horario único de arriba (pruebas). Al crearlos quedan bloqueados la fecha de inicio, el turno de mañana y el día de descanso de cada trabajador.</span></div>`;
+  return `<details class="card noprint" ${CONF_ABIERTA ? 'open' : ''} ontoggle="CONF_ABIERTA=this.open"><summary style="cursor:pointer;font-weight:bold;color:var(--az);font-size:16px">⚙ Configuración de turnos</summary><div style="margin-top:10px">
+    <b>Horario único previo a la apertura</b> <span class="muted">(desde el 09-11-2026, todos los trabajadores; sábado y domingo libres)</span>
+    <table style="width:auto;margin-top:4px">${cab}<tbody>${fila('Lunes a jueves', P.lj, 'S.turnos.pre.lj')}${fila('Viernes', P.vi, 'S.turnos.pre.vi')}</tbody></table>
+    <hr style="margin:12px 0">${def}
+    <b>Horas de cada turno</b> <span class="muted">(se usan desde que parten los turnos definitivos; se pueden cambiar cuando quieras)</span>
+    <table style="width:auto;margin-top:4px">${cab}<tbody>${[['manana', 'Mañana (lunes a sábado)'], ['tarde', 'Tarde (lunes a viernes)'], ['tardeSab', 'Tarde (sábado)'], ['domingo', 'Domingo (turno de mañana)']].map(([k, l]) => fila(l, H[k], 'S.turnos.horario.' + k)).join('')}</tbody></table>
+    <div class="row" style="margin-top:8px"><label>Duración de la colación (minutos)<input type="number" value="${H.colMin}" style="width:70px" onchange="S.turnos.horario.colMin=n(this.value,60);guardar();vTurnos()"></label>
+    <button class="b2" onclick="if(confirm('¿Quitar todos los cambios a mano de esta semana (días libres movidos y horarios distintos)? La asistencia registrada no se borra.')){delete S.turnos.cambios[SEMANA];guardar();vTurnos()}">Quitar cambios de esta semana</button></div>
+    <p class="muted">Cambio puntual (otro día libre, otro horario) y asistencia real: doble clic en el día del trabajador en el calendario. La asistencia que registres ahí alimenta Remuneración.</p></div></details>`;
+}
+function crearTurnoDef(){
+  if (S.turnos.def) return toast('Los turnos definitivos ya están creados');
+  const ini = $('#defIni').value, man = $('#defMan').value;
+  if (!ini || ini < TURNO_MIN) return toast('Elige la fecha en que parten (desde el 09-11-2026)');
+  const sinT = S.personal.filter(p => !p.turno).map(p => p.nombre || '(sin nombre)'), sinD = S.personal.filter(p => !p.descanso).map(p => p.nombre || '(sin nombre)');
+  let msg = `Turnos definitivos desde el ${ini.split('-').reverse().join('-')}, con el turno ${man} de mañana ese día.\n\nDESPUÉS NO SE PODRÁ CAMBIAR la fecha, el turno de mañana ni el día de descanso de cada trabajador (el día libre solo se mueve semana a semana en el calendario).`;
+  if (sinT.length) msg += `\n\nSin turno A/B: ${sinT.join(', ')}.`;
+  if (sinD.length) msg += `\nSin día de descanso (quedarán sin día libre hasta que lo definas): ${sinD.join(', ')}.`;
+  if (!confirm(msg + '\n\n¿Crear los turnos definitivos?')) return;
+  S.turnos.def = { inicio: ini, manana: man, creado: iso(new Date()) }; guardar(); SEMANA = iso(lunesDe(deIso(ini))); vTurnos(); toast('Turnos definitivos creados');
+}
 function vTurnos(){
+  const minL = iso(lunesDe(deIso(TURNO_MIN)));
   if (!SEMANA) SEMANA = iso(lunesDe(new Date()));
-  const L0 = deIso(SEMANA), gm = grupoManana(SEMANA), gt = gm === 'A' ? 'B' : 'A';
+  if (SEMANA < minL) SEMANA = minL;
+  const L0 = deIso(SEMANA), gm = grupoManana(SEMANA), gt = gm === 'A' ? 'B' : 'A', D = S.turnos.def, pre = semanaPre(SEMANA);
   const fechas = [...Array(7)].map((_, d) => { const x = new Date(L0); x.setDate(x.getDate() + d); return x; });
-  const ddmm = x => `${String(x.getDate()).padStart(2, '0')}-${String(x.getMonth() + 1).padStart(2, '0')}`;
+  const ddmm = ddmmx;
   const H = S.turnos.horario;
-  const orden = [...S.personal].sort((a, b) => (a.turno === gm ? 0 : 1) - (b.turno === gm ? 0 : 1));
-  const celda = (p, d) => { const h = horarioDia(p, d, SEMANA);
-    const on = `data-k="${p.id}|${d}" onclick="selTurno('${p.id}|${d}')" ondblclick="editarTurno('${p.id}',${d})" title="Doble clic para cambiar"`;
+  const orden = pre ? [...S.personal] : [...S.personal].sort((a, b) => (a.turno === gm ? 0 : 1) - (b.turno === gm ? 0 : 1));
+  const celda = (p, d) => { const h = horarioDia(p, d, SEMANA), di = fechaDia(SEMANA, d), a = (S.turnos.asist[di] || {})[p.id] || {};
+    const on = `data-k="${p.id}|${d}" onclick="selTurno('${p.id}|${d}')" ondblclick="editarTurno('${p.id}',${d})" title="Doble clic: cambiar el día o registrar asistencia"`;
+    if (a.t && ASIST_T[a.t]) return `<td colspan="3" class="tasi tasi-${a.t}" ${on}>${ASIST_T[a.t]}</td>`;
     if (h.libre) return `<td colspan="3" class="tlibre ${h.cambiado ? 'tcam' : ''}" ${on}>LIBRE</td>`;
-    const cls = (h.doble ? 'tdoble ' : '') + (h.cambiado ? 'tcam' : '');
-    return `<td class="${cls}" ${on}>${esc(h.e)}</td><td class="${cls}" ${on}>${esc(h.c || '—')}</td><td class="${cls}" ${on}>${esc(h.s)}</td>`; };
+    const real = a.e && a.s, cls = (h.doble ? 'tdoble ' : '') + (h.cambiado ? 'tcam ' : '') + (real ? 'treal' : '');
+    return `<td class="${cls}" ${on}>${esc(real ? a.e : h.e)}</td><td class="${cls}" ${on}>${esc(h.c || '—')}</td><td class="${cls}" ${on}>${esc(real ? a.s : h.s)}</td>`; };
+  const banner = !D ? `<span class="tg" style="padding:1px 6px;background:#fef3c7">Horario único (aún sin turnos definitivos)</span> &nbsp; <span class="muted">Todos con el mismo horario, sábado y domingo libres. Sirve para probar cómo quedarían los turnos.</span>`
+    : pre ? `<span class="tg" style="padding:1px 6px;background:#fef3c7">Antes de la apertura: horario único</span> &nbsp; <span class="muted">Los turnos definitivos parten el ${D.inicio.split('-').reverse().join('-')}.</span>`
+    : `<span class="tg gm" style="padding:1px 6px">Mañana: turno ${gm}</span> &nbsp; <span class="tg gt" style="padding:1px 6px">Tarde: turno ${gt}</span> &nbsp; <span class="muted">El turno de mañana trabaja el domingo. Se alterna solo cada semana.${D.inicio > SEMANA ? ' Los turnos definitivos parten el ' + D.inicio.split('-').reverse().join('-') + '.' : ''}</span>`;
   $('#main').innerHTML = `<style>
     .tt{border-collapse:collapse;width:100%;font-size:12px}.tt th,.tt td{border:1px solid #9aa3b5;padding:3px 4px;text-align:center}
     .tt thead th{background:#1F3864;color:#fff}.tt thead tr.sub th{background:#D9E1F2;color:#1F3864;font-size:10px}
     .tt td.nom{text-align:left;white-space:nowrap}.tt td{cursor:pointer}.tt td.nom,.tt td.tg{cursor:default}
     .tt td.tsel{outline:2px solid #2563eb;outline-offset:-2px;background:#dbeafe}.tt td{user-select:none}
     .tlibre{background:#e5e7eb;font-weight:bold;color:#6b7280;letter-spacing:2px}.tdoble{background:#fde2c4;font-weight:bold}.tcam{box-shadow:inset 0 0 0 2px #7c3aed}
+    .treal{background:#dcfce7;font-weight:bold}.tasi{font-weight:bold;letter-spacing:1px;color:#fff}.tasi-falta{background:#dc2626}.tasi-licencia{background:#7c3aed}.tasi-vacaciones{background:#0891b2}.tasi-permiso{background:#2563eb}.tasi-libre{background:#6b7280}
     .tg{font-weight:bold}.gm{background:#FFF2CC}.gt{background:#DDEBF7}
+    #tmodal{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;display:flex;align-items:center;justify-content:center}#tmodal .box{background:#fff;border-radius:10px;padding:16px;max-width:430px;width:94%;max-height:92vh;overflow:auto}
     @media print{@page{size:landscape;margin:8mm}.tt{font-size:10px}.tt td{cursor:default}}
   </style>
+  ${confTurnosHtml()}
   <div class="card"><div class="row noprint">
-    <button class="b2" onclick="cambiarSemana(-1)">◀ Semana anterior</button>
-    <label>Semana del<input type="date" value="${SEMANA}" onchange="SEMANA=iso(lunesDe(deIso(this.value)));vTurnos()"></label>
+    <button class="b2" onclick="cambiarSemana(-1)" ${SEMANA <= minL ? 'disabled' : ''}>◀ Semana anterior</button>
+    <label>Semana del<input type="date" min="${TURNO_MIN}" value="${SEMANA}" onchange="SEMANA=iso(lunesDe(deIso(this.value)));vTurnos()"></label>
     <button class="b2" onclick="cambiarSemana(1)">Semana siguiente ▶</button>
     <button class="b2" onclick="SEMANA=iso(lunesDe(new Date()));vTurnos()">Hoy</button>
-    <label>Turno de mañana esta semana<select onchange="S.turnos.ref={lunes:SEMANA,manana:this.value};guardar();vTurnos()"><option ${gm === 'A' ? 'selected' : ''}>A</option><option ${gm === 'B' ? 'selected' : ''}>B</option></select></label>
     <label>Formato de impresión<select id="fmtImp">${[['completo','Completo (todos en una hoja)'],['turno','Una hoja por turno'],['reducido','Reducido (todos en una hoja)'],['reducido_turno','Reducido, una hoja por turno']].map(([v, l]) => `<option value="${v}" ${FMT_IMP === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
     <button class="b" onclick="FMT_IMP=$('#fmtImp').value;imprimirTurnos(FMT_IMP)">🖨 Imprimir</button></div>
   <h2 style="margin:10px 0 2px">Turnos bodega — semana del lunes ${ddmm(fechas[0])} al domingo ${ddmm(fechas[6])}-${fechas[6].getFullYear()}</h2>
-  <p style="margin:0 0 8px"><span class="tg gm" style="padding:1px 6px">Mañana: turno ${gm}</span> &nbsp; <span class="tg gt" style="padding:1px 6px">Tarde: turno ${gt}</span> &nbsp; <span class="muted">El turno de mañana trabaja el domingo. Se alterna solo cada semana.</span></p>
+  <p style="margin:0 0 8px">${banner}</p>
   <table class="tt"><thead><tr><th rowspan="2">Trabajador</th><th rowspan="2">Turno</th>${fechas.map((x, d) => `<th colspan="3">${DIAS3[d]} ${ddmm(x)}</th>`).join('')}<th rowspan="2" class="noprint">Horas</th></tr>
     <tr class="sub">${fechas.map(() => '<th>entrada</th><th>colación</th><th>salida</th>').join('')}</tr></thead><tbody>
-    ${orden.map(p => { const hs = horasSemana(p, SEMANA); return `<tr><td class="nom"><b>${esc(p.nombre || '(sin nombre)')}</b><br><span class="muted">${esc(p.cargo || '')}</span></td><td class="tg ${p.turno === gm ? 'gm' : 'gt'}">${esc(p.turno || '?')}</td>${[0,1,2,3,4,5,6].map(d => celda(p, d)).join('')}<td class="noprint ${hs > 42.01 ? 'err' : ''}">${fmt(hs, 1)}</td></tr>`; }).join('')}
+    ${orden.map(p => { const hs = horasSemana(p, SEMANA); return `<tr><td class="nom"><b>${esc(p.nombre || '(sin nombre)')}</b><br><span class="muted">${esc(p.cargo || '')}</span></td><td class="tg ${pre ? '' : p.turno === gm ? 'gm' : 'gt'}">${esc(p.turno || '?')}</td>${[0,1,2,3,4,5,6].map(d => celda(p, d)).join('')}<td class="noprint ${hs > 42.01 ? 'err' : ''}">${fmt(hs, 1)}</td></tr>`; }).join('')}
   </tbody></table>
-</div>
-  <details class="card noprint" ${CONF_ABIERTA ? 'open' : ''} ontoggle="CONF_ABIERTA=this.open"><summary style="cursor:pointer;font-weight:bold;color:var(--az);font-size:16px">⚙ Horarios (configuración)</summary><div style="margin-top:10px">
-    <table style="width:auto"><thead><tr><th>Jornada</th><th>Entrada</th><th>Colación</th><th>Salida</th></tr></thead><tbody>
-    ${[['manana','Mañana (lunes a sábado)'],['tarde','Tarde (lunes a viernes)'],['tardeSab','Tarde (sábado)'],['domingo','Domingo (turno de mañana)']].map(([k, l]) => `<tr><td>${l}</td>${['e','c','s'].map(x => `<td><input type="time" value="${H[k][x]}" onchange="S.turnos.horario.${k}.${x}=this.value;guardar();vTurnos()"></td>`).join('')}</tr>`).join('')}
-    </tbody></table>
-    <div class="row" style="margin-top:8px"><label>Duración de la colación (minutos)<input type="number" value="${H.colMin}" style="width:70px" onchange="S.turnos.horario.colMin=n(this.value,60);guardar();vTurnos()"></label>
-    <button class="b2" onclick="if(confirm('¿Quitar todos los cambios a mano de esta semana?')){delete S.turnos.cambios[SEMANA];guardar();vTurnos()}">Quitar cambios de esta semana</button></div>
-    <p class="muted">El turno (A/B) y el día de descanso de cada trabajador se cambian en la pestaña Personal. Para un cambio solo de esta semana (día libre distinto, otro horario), haz doble clic en el día del trabajador en el calendario.</p></div></details>`;
+  <p class="muted noprint" style="margin:6px 0 0">Leyenda: <span class="treal" style="padding:0 5px">verde</span> horas reales registradas · <span class="tcam" style="padding:0 5px">borde violeta</span> cambio de esta semana · rojo/violeta/celeste/azul: falta, licencia, vacaciones, permiso. Sin registro se asume que se trabajó el horario del calendario.</p>
+</div>`;
 }
-let CONF_ABIERTA = false, FMT_IMP = 'completo';
+let CONF_ABIERTA = true, FMT_IMP = 'completo';
 /* nombre + primer apellido */
 const nombreCorto = s => { const w = String(s || '').trim().split(/\s+/); return w.length <= 2 ? w.join(' ') : w[0] + ' ' + w[1]; };
 function tablaImpresion(lista, red, gm){
@@ -1637,7 +1683,7 @@ function tablaImpresion(lista, red, gm){
 }
 function imprimirTurnos(modo){
   const red = modo.startsWith('reducido'), porTurno = modo.endsWith('turno');
-  const gm = grupoManana(SEMANA), gt = gm === 'A' ? 'B' : 'A';
+  const gm = grupoManana(SEMANA), gt = gm === 'A' ? 'B' : 'A', pre = semanaPre(SEMANA);
   const L0 = deIso(SEMANA), L6 = new Date(L0); L6.setDate(L6.getDate() + 6);
   const f = x => `${String(x.getDate()).padStart(2, '0')}-${String(x.getMonth() + 1).padStart(2, '0')}-${x.getFullYear()}`;
   const tit = `Turnos bodega — semana del ${f(L0)} al ${f(L6)}`;
@@ -1651,26 +1697,47 @@ function imprimirTurnos(modo){
     .gm{background:#FFF2CC} .gt{background:#DDEBF7} .lib,.dob,.gm,.gt{-webkit-print-color-adjust:exact;print-color-adjust:exact}</style>`;
   const man = S.personal.filter(p => p.turno === gm), tar = S.personal.filter(p => p.turno !== gm);
   let cuerpo;
-  if (porTurno) cuerpo = [[man, `Turno mañana — turno ${gm}`], [tar, `Turno tarde — turno ${gt}`]].map(([lista, nom]) =>
+  if (porTurno && !pre) cuerpo = [[man, `Turno mañana — turno ${gm}`], [tar, `Turno tarde — turno ${gt}`]].map(([lista, nom]) =>
     `<div class="hoja"><h1>${tit}</h1><p class="sub2"><b>${nom}</b>${lista === man ? ' · trabaja el domingo' : ''}</p>${tablaImpresion(lista, red, gm)}</div>`).join('');
-  else cuerpo = `<div class="hoja"><h1>${tit}</h1><p class="sub2"><b>Mañana: turno ${gm}</b> · <b>Tarde: turno ${gt}</b> · el turno de mañana trabaja el domingo</p>${tablaImpresion(man.concat(tar), red, gm)}</div>`;
+  else cuerpo = `<div class="hoja"><h1>${tit}</h1><p class="sub2">${pre ? '<b>Horario único previo a la apertura</b>' : `<b>Mañana: turno ${gm}</b> · <b>Tarde: turno ${gt}</b> · el turno de mañana trabaja el domingo`}</p>${tablaImpresion(pre ? S.personal : man.concat(tar), red, gm)}</div>`;
   imprimir(tit, css + cuerpo);
 }
 function selTurno(k){ document.querySelectorAll('.tt td.tsel').forEach(x => x.classList.remove('tsel')); document.querySelectorAll(`.tt td[data-k="${k}"]`).forEach(x => x.classList.add('tsel')); }
-function cambiarSemana(k){ const x = deIso(SEMANA); x.setDate(x.getDate() + 7 * k); SEMANA = iso(x); vTurnos(); }
+function cambiarSemana(k){ const x = deIso(SEMANA); x.setDate(x.getDate() + 7 * k); SEMANA = iso(x) < iso(lunesDe(deIso(TURNO_MIN))) ? iso(lunesDe(deIso(TURNO_MIN))) : iso(x); vTurnos(); }
 function editarTurno(pid, d){
-  const p = S.personal.find(x => x.id === pid), h = horarioDia(p, d, SEMANA);
-  const actual = h.libre ? 'LIBRE' : `${h.e} ${h.c || '-'} ${h.s}`;
-  const v = prompt(`${p.nombre} — ${DIAS[d]}\n\nEscribe "entrada colación salida" (ej: 08:00 13:00 15:30), o LIBRE.\nDeja vacío para volver al horario normal.`, actual);
-  if (v === null) return;
-  const sem = S.turnos.cambios[SEMANA] = S.turnos.cambios[SEMANA] || {}; const per = sem[pid] = sem[pid] || {};
-  const x = v.trim().toUpperCase();
-  if (!x) delete per[d];
-  else if (x.startsWith('LIB')) per[d] = { libre: true };
-  else { const m = x.match(/(\d{1,2}[:.]\d{2})\s+(\d{1,2}[:.]\d{2}|-)\s+(\d{1,2}[:.]\d{2})/); if (!m) return toast('Formato: 08:00 13:00 15:30');
-    const f = s => s === '-' ? '' : s.replace('.', ':').padStart(5, '0'); per[d] = { e: f(m[1]), c: f(m[2]), s: f(m[3]) }; }
-  if (!Object.keys(per).length) delete sem[pid];
-  guardar(); vTurnos();
+  const p = S.personal.find(x => x.id === pid), di = fechaDia(SEMANA, d), h = horarioDia(p, d, SEMANA);
+  const cam = ((S.turnos.cambios[SEMANA] || {})[pid] || {})[d], a = (S.turnos.asist[di] || {})[pid] || {};
+  const modo = cam ? (cam.libre ? 'libre' : 'esp') : 'normal', ec = cam && !cam.libre ? cam : h;
+  const ES = [['', 'Trabajó (según horario o con horas reales)'], ['falta', 'Falta'], ['licencia', 'Licencia médica'], ['vacaciones', 'Vacaciones'], ['permiso', 'Permiso con goce'], ['libre', 'No trabajó (aunque el turno decía)']];
+  const f = deIso(di), fh = `${DIAS[d]} ${ddmmx(f)}-${f.getFullYear()}`;
+  const m = document.createElement('div'); m.id = 'tmodal';
+  m.innerHTML = `<div class="box"><h3 style="margin:0 0 2px">${esc(p.nombre || '(sin nombre)')}</h3><div class="muted" style="margin-bottom:10px">${fh} · ${h.libre ? 'libre' : esc(h.e + ' – ' + h.s)}</div>
+    <b>Calendario de esta semana</b>
+    <div class="row" style="margin:4px 0"><select id="tm_modo" onchange="tmModo()"><option value="normal" ${modo === 'normal' ? 'selected' : ''}>Según el calendario</option><option value="libre" ${modo === 'libre' ? 'selected' : ''}>Día libre este día</option><option value="esp" ${modo === 'esp' ? 'selected' : ''}>Horario distinto</option></select></div>
+    <div class="row" id="tm_esp" style="${modo === 'esp' ? '' : 'display:none'}"><label>Entrada<input type="time" id="tm_e" value="${ec.e || ''}"></label><label>Colación<input type="time" id="tm_c" value="${ec.c || ''}"></label><label>Salida<input type="time" id="tm_s" value="${ec.s || ''}"></label></div>
+    <p class="muted" style="margin:2px 0 10px">Solo vale para este día. El día de descanso fijo del trabajador (pestaña Personal) no cambia.</p>
+    <b>Asistencia real</b> <span class="muted">(alimenta Remuneración)</span>
+    <div class="row" style="margin:4px 0"><select id="tm_t" onchange="tmAs()">${ES.map(([k, l]) => `<option value="${k}" ${(a.t || '') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+    <div class="row" id="tm_as" style="${a.t ? 'display:none' : ''}"><label>Entrada real<input type="time" id="tm_ae" value="${a.e || ''}"></label><label>Salida real<input type="time" id="tm_as2" value="${a.s || ''}"></label><label>Colación (min)<input type="number" id="tm_ac" style="width:70px" value="${a.c ?? ''}" placeholder="${h.c ? S.turnos.horario.colMin : 0}"></label></div>
+    <p class="muted" style="margin:2px 0 10px">Déjalo vacío si trabajó el horario normal. Pon entrada y salida reales solo si fueron distintas (horas extra, atraso).</p>
+    <div class="row"><button class="b" onclick="guardarTurnoDia('${pid}',${d})">Guardar</button><button class="b2" onclick="$('#tmodal').remove()">Cancelar</button></div></div>`;
+  document.body.appendChild(m);
+}
+function tmModo(){ $('#tm_esp').style.display = $('#tm_modo').value === 'esp' ? '' : 'none'; }
+function tmAs(){ $('#tm_as').style.display = $('#tm_t').value ? 'none' : ''; }
+function guardarTurnoDia(pid, d){
+  const di = fechaDia(SEMANA, d), md = $('#tm_modo').value, fx = v => String(v || '').replace('.', ':').padStart(5, '0');
+  const sem = S.turnos.cambios[SEMANA] = S.turnos.cambios[SEMANA] || {}, per = sem[pid] = sem[pid] || {};
+  if (md === 'normal') delete per[d];
+  else if (md === 'libre') per[d] = { libre: true };
+  else { const e = $('#tm_e').value, s = $('#tm_s').value; if (!e || !s) return toast('Pon entrada y salida del horario distinto'); per[d] = { e, c: $('#tm_c').value, s }; }
+  if (!Object.keys(per).length) delete sem[pid]; if (!Object.keys(sem).length) delete S.turnos.cambios[SEMANA];
+  const dia = S.turnos.asist[di] = S.turnos.asist[di] || {}, t = $('#tm_t').value, ae = $('#tm_ae').value, as = $('#tm_as2').value, ac = $('#tm_ac').value;
+  if (t) dia[pid] = { t };
+  else if (ae || as){ if (!ae || !as) return toast('Pon entrada y salida reales'); dia[pid] = { e: ae, s: as }; if (ac !== '') dia[pid].c = ac; }
+  else delete dia[pid];
+  if (!Object.keys(dia).length) delete S.turnos.asist[di];
+  $('#tmodal').remove(); guardar(); vTurnos();
 }
 
 /* ===================== PRODUCTOS ===================== */
@@ -1807,7 +1874,7 @@ function remuCalc(D, ym){
   const faltas = [], lics = []; let atrMin = 0, festDias = 0, festMin = 0;
   for (let d = new Date(ini); d <= fin; d.setDate(d.getDate() + 1)){
     const di = iso(d), lun = iso(lunesDe(d)), dw = (d.getDay() + 6) % 7, enMes = d >= primero && d <= ultimo;
-    const h = horarioDia(p, dw, lun), r = D.reg[di] || {};
+    const h = horarioDia(p, dw, lun), r = D.reg[di] || ((S.turnos.asist[di] || {})[p.id]) || {};
     const fuera = di < cIni || di > cFin;
     const prog = (!fuera && !h.libre && h.e && h.s) ? minutos(h.s) - minutos(h.e) - (h.c ? colMin : 0) : 0;
     let real = prog, est = fuera ? 'fuera' : h.libre ? 'libre' : 'turno', manual = false;
@@ -1876,7 +1943,7 @@ function remuSet(path, v, t){
   const k = ks[ks.length - 1]; o[k] = t === 'n' ? n(v) : t === 'b' ? !!v : v; remuGuardar(); vRemu();
 }
 function remuReg(di, k, v){
-  const r = REMU.d.reg[di] = REMU.d.reg[di] || {}; if (v === '' || v == null) delete r[k]; else r[k] = v;
+  const r = REMU.d.reg[di] = REMU.d.reg[di] || { ...(((S.turnos.asist[di] || {})[REMU.d.pid]) || {}) }; if (v === '' || v == null) delete r[k]; else r[k] = v;
   if (k === 't' && v) { delete r.e; delete r.s; delete r.c; }
   if ((k === 'e' || k === 's') && v) delete r.t;
   if (!Object.keys(r).length) delete REMU.d.reg[di]; remuGuardar(); vRemu();
@@ -1981,9 +2048,9 @@ function remuHtmlReg(D){
       <td><input style="width:54px" value="${r.c ?? ''}" placeholder="${x.h.c ? S.turnos.horario.colMin : 0}" onchange="remuReg('${x.di}','c',this.value)"></td>
       <td><select onchange="remuReg('${x.di}','t',this.value)">${ES.map(([k, l]) => `<option value="${k}" ${(r.t || '') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></td>
       <td class="num">${fmt(x.real / 60, 2)} h${dif ? ` <span style="color:${dif > 0 ? '#1d4ed8' : '#b91c1c'}">(${dif > 0 ? '+' : ''}${fmt(dif / 60, 2)})</span>` : ''}</td>
-      <td>${x.manual ? `<button class="bx" title="Volver a lo que dice el turno" onclick="remuReg('${x.di}','t','');delete REMU.d.reg['${x.di}'];remuGuardar();vRemu()">✕</button>` : ''}</td></tr>`;
+      <td>${x.manual && D.reg[x.di] ? `<button class="bx" title="Volver a lo que dice el turno" onclick="remuReg('${x.di}','t','');delete REMU.d.reg['${x.di}'];remuGuardar();vRemu()">✕</button>` : ''}</td></tr>`;
   }).join('');
-  return `<div class="card"><p class="muted" style="margin-top:0">Si no ingresas nada en un día, se asume que trabajaste lo que dice tu turno (pestaña Turnos, con sus cambios). Ingresa entrada y salida reales solo cuando difieran (horas extra, cambio de horario) o marca el estado del día.</p>
+  return `<div class="card"><p class="muted" style="margin-top:0">Si no ingresas nada en un día, se asume que trabajaste lo que dice tu turno (pestaña Turnos, con sus cambios). La asistencia que registras en Turnos (doble clic en el día) aparece aquí sola; lo que escribas aquí tiene prioridad. Ingresa entrada y salida reales solo cuando difieran (horas extra, cambio de horario) o marca el estado del día.</p>
     <table><thead><tr><th>Fecha</th><th>Día</th><th>Turno</th><th>Entrada real</th><th>Salida real</th><th>Colación (min)</th><th>Estado</th><th class="num">Horas trabajadas</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 function remuHtmlCon(D){
