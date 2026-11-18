@@ -1841,9 +1841,9 @@ async function remuAbrir(pin){
 }
 function remuBloquear(){ REMU.d = null; REMU.key = null; clearTimeout(REMU.timer); }
 function remuTick(){ clearTimeout(REMU.timer); REMU.timer = setTimeout(() => { if (REMU.d){ remuBloquear(); if (TAB === 'remu') vRemu(); toast('Remuneración bloqueada por inactividad'); } }, 5 * 60 * 1000); }
-function remuEsperado(D, ym){ // lo que "debería" recibir: contrato con el monto acordado (670) como base; el resto de los cálculos legales usa el contrato
-  const c = D.c, r0 = n(c.ref); if (!r0) return null; const R0 = remuCalc(D, ym); if (R0.err) return null;
-  if (c.refTipo === 'base'){ const x = remuCalc({ ...D, c: { ...c, base: r0 } }, ym); return x.err ? null : { v: x.liquido, txt: 'Debería recibir (sueldo base ' + clp(r0) + (x.diasC < 30 ? ', proporcional a ' + x.diasC + '/30 días' : '') + ')' }; }
+function remuEsperado(D, ym, hasta){ // lo que "debería" recibir: contrato con el monto acordado (670) como base; el resto de los cálculos legales usa el contrato
+  const c = D.c, r0 = n(c.ref); if (!r0) return null; const R0 = remuCalc(D, ym, hasta); if (R0.err) return null;
+  if (c.refTipo === 'base'){ const x = remuCalc({ ...D, c: { ...c, base: r0 } }, ym, hasta); return x.err ? null : { v: x.liquido, txt: 'Debería recibir (sueldo base ' + clp(r0) + (x.diasC < 30 ? ', proporcional a ' + x.diasC + '/30 días' : '') + ')' }; }
   return { v: r0 * R0.diasC / 30, txt: 'Debería recibir: ' + clp(r0) + ' líquidos por mes completo' + (R0.diasC < 30 ? ', proporcional a ' + R0.diasC + '/30 días' : '') };
 }
 function remuMigrar(D){ // completa datos del contrato en registros guardados antes de tenerlo (no pisa lo ya ingresado, salvo base en 0)
@@ -1862,7 +1862,7 @@ function remuDefault(){
     fer: REMU_FER.map(([f, i]) => ({ f, irr: !!i })), reg: {}, aj: {}, rec: {} };
 }
 /* ---- cálculo de la liquidación de un mes ---- */
-function remuCalc(D, ym){
+function remuCalc(D, ym, hasta){ // hasta (opcional, 'AAAA-MM-DD'): calcula lo devengado solo hasta ese día
   const [Y, M] = ym.split('-').map(Number), p = S.personal.find(x => x.id === D.pid);
   if (!p) return { err: 'Elige al trabajador en “Contrato y parámetros”.' };
   const c = D.c, par = D.par, colMin = n(S.turnos.horario.colMin, 60), det = [];
@@ -1870,7 +1870,7 @@ function remuCalc(D, ym){
   const primero = new Date(Y, M - 1, 1), ultimo = new Date(Y, M, 0);
   const ini = lunesDe(primero), fin = new Date(ultimo); fin.setDate(fin.getDate() + ((7 - ((ultimo.getDay() + 6) % 7) - 1) % 7)); // domingo de la última semana
   const semanas = {}; const dias = [];
-  const cIni = c.ini || '0000-01-01', cFin = c.fin || '9999-12-31';
+  const cIni = c.ini || '0000-01-01', cFin0 = c.fin || '9999-12-31', cFin = hasta && hasta < cFin0 ? hasta : cFin0;
   const faltas = [], lics = []; let atrMin = 0, festDias = 0, festMin = 0;
   for (let d = new Date(ini); d <= fin; d.setDate(d.getDate() + 1)){
     const di = iso(d), lun = iso(lunesDe(d)), dw = (d.getDay() + 6) % 7, enMes = d >= primero && d <= ultimo;
@@ -1994,13 +1994,23 @@ function remuHtmlLiq(D){
   const sinBase = n(c.base) <= 0 ? '<p class="warn">Falta el sueldo base: completa “Contrato y parámetros”.</p>' : '';
   const dif = rec ? rec.liq - R.liquido : null;
   const refL = remuEsperado(D, ym);
+  const hoyI = iso(new Date()), RA = hoyI.slice(0, 7) === ym ? remuCalc(D, ym, hoyI) : null, refA = RA && !RA.err ? remuEsperado(D, ym, hoyI) : null;
+  const acum = RA && !RA.err ? (() => { const hrs = RA.dias.filter(x => x.enMes && x.di <= hoyI).reduce((a, x) => a + x.real, 0), dt = RA.dias.filter(x => x.enMes && x.di <= hoyI && x.real > 0).length;
+    return `<div class="card" style="border:2px solid #1F3864"><h3 style="margin-top:0">Acumulado a hoy (${(c.ini && c.ini.slice(0, 7) === ym ? c.ini : ym + '-01').split('-').reverse().join('-')} al ${hoyI.split('-').reverse().join('-')})</h3>
+      <table style="max-width:640px"><tbody>
+      <tr><td>Días de contrato devengados</td><td class="num">${RA.diasC}</td></tr>
+      <tr><td>Días trabajados · horas registradas</td><td class="num">${dt} · ${fmt(hrs / 60, 1)} h</td></tr>
+      ${RA.heVal ? `<tr><td>Horas extra a la fecha</td><td class="num">${clp(RA.heVal)}</td></tr>` : ''}
+      <tr><td><b>Líquido a la fecha (contrato escrito)</b></td><td class="num"><b>${clp(RA.liquido)}</b></td></tr>
+      ${refA ? `<tr><td><b>Líquido a la fecha que debería recibir</b> <span class="muted">(base ${clp(n(c.ref))}, proporcional)</span></td><td class="num" style="font-size:18px;color:#1F3864"><b>${clp(refA.v)}</b></td></tr>` : ''}
+      </tbody></table><p class="muted">Se actualiza solo con cada día que pasa y con lo que registres en Turnos (doble clic en el día) o en Registro diario. La liquidación completa del mes está más abajo.</p></div>`; })() : '';
   const refCard = refL ? `<div class="card"><h3 style="margin-top:0">Lo que debería recibir vs. contrato</h3><table style="max-width:640px"><tbody>
       <tr><td>Líquido según contrato escrito (sueldo ${clp(n(c.base))})</td><td class="num">${clp(R.liquido)}</td></tr>
       <tr><td>${refL.txt}</td><td class="num">${clp(refL.v)}</td></tr>
       <tr><td><b>${R.liquido >= refL.v ? 'El contrato supera lo esperado en' : 'Diferencia contrato escrito vs. lo que debería recibir'}</b></td><td class="num"><b>${clp(Math.abs(R.liquido - refL.v))}</b></td></tr></tbody></table>
       <p class="muted">Lo acordado de palabra no consta en el contrato. Hasta tener la primera liquidación, horas extra, AFP y demás cálculos legales usan el sueldo del contrato; el monto “debería recibir” es la referencia para comparar con lo que te depositen.</p></div>` : '';
   const hist = Object.keys(D.rec).sort().reverse().map(k => { const x = remuCalc(D, k); if (x.err) return ''; const e = remuEsperado(D, k), ev = e ? e.v : x.liquido, d = D.rec[k].liq - ev; return `<tr><td>${k}</td><td class="num">${clp(ev)}</td><td class="num">${clp(D.rec[k].liq)}</td><td class="num" style="color:${Math.abs(d) < 1 ? '#166534' : d < 0 ? '#b91c1c' : '#1d4ed8'}"><b>${clp(d)}</b></td></tr>`; }).join('');
-  return `${sinBase}<div class="card"><h3 style="margin-top:0">Liquidación de ${ym} — ${esc((S.personal.find(x => x.id === D.pid) || {}).nombre || '')}</h3>
+  return `${sinBase}${acum}<div class="card"><h3 style="margin-top:0">Liquidación de ${ym} — ${esc((S.personal.find(x => x.id === D.pid) || {}).nombre || '')}</h3>
     <table style="max-width:640px"><tbody>
     ${sec('HABERES')}
     ${f('Sueldo base', R.sueldo, false, R.descFalt ? '(descontadas faltas/licencias: ' + clp(R.descFalt) + ')' : '')}
