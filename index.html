@@ -2040,10 +2040,10 @@ function remuHtmlLiq(D){
 function remuHtmlReg(D){
   const ym = REMU.ym, R = remuCalc(D, ym); if (R.err) return `<div class="card"><p class="warn">${R.err}</p></div>`;
   const ES = [['', 'Según turno'], ['falta', 'Falta'], ['licencia', 'Licencia médica'], ['vacaciones', 'Vacaciones'], ['permiso', 'Permiso con goce'], ['libre', 'No trabajé (aunque el turno decía)']];
-  const rows = R.dias.filter(x => x.enMes).map(x => {
+  const hoyI = iso(new Date()), rows = R.dias.filter(x => x.enMes && x.est !== 'fuera').map(x => { // el registro parte el día de inicio del contrato (09-11-2026)
     const r = x.r, hp = x.h.libre ? '<span class="muted">libre</span>' : `${x.h.e}–${x.h.s}`, fer = x.fer ? ` <span class="tag ${x.fer.irr ? 'REVISAR' : 'MEDIA'}" title="Feriado${x.fer.irr ? ' irrenunciable' : ''}">feriado${x.fer.irr ? ' irr.' : ''}</span>` : '';
     const dif = x.real - x.prog;
-    return `<tr style="${x.dw === 6 ? 'background:#fff7ed' : ''}"><td>${x.di.slice(8)}/${x.di.slice(5, 7)}</td><td>${DIAS3[x.dw]}${fer}</td><td>${hp}</td>
+    return `<tr style="${x.di > hoyI ? 'opacity:.55' : x.dw === 6 ? 'background:#fff7ed' : ''}" ${x.di > hoyI ? 'title="Día futuro: se muestra lo programado"' : ''}><td>${x.di.slice(8)}/${x.di.slice(5, 7)}</td><td>${DIAS3[x.dw]}${fer}</td><td>${hp}</td>
       <td><input type="time" value="${r.e || ''}" onchange="remuReg('${x.di}','e',this.value)"></td><td><input type="time" value="${r.s || ''}" onchange="remuReg('${x.di}','s',this.value)"></td>
       <td><input style="width:54px" value="${r.c ?? ''}" placeholder="${x.h.c ? S.turnos.horario.colMin : 0}" onchange="remuReg('${x.di}','c',this.value)"></td>
       <td><select onchange="remuReg('${x.di}','t',this.value)">${ES.map(([k, l]) => `<option value="${k}" ${(r.t || '') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></td>
