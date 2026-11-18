@@ -1481,6 +1481,7 @@ async function ubicarSectores(){
 /* dotación definitiva (18-11-2026): 21 cargos. Los cargos sin trabajador quedan como "pendiente". Se aplica una sola vez a los datos guardados. */
 const DOTACION = [['Supervisor', 2], ['Bodeguero', 9], ['Operador grúa horquilla', 4], ['Dimensionado', 1], ['Asistente técnico (arriendo)', 1], ['Chófer A4', 2], ['Chófer B', 2]];
 function migrarDotacion(x){
+  if (x.dotacion === 1 && Array.isArray(x.personal)){ let n = 0; x.personal.forEach(p => { if (p.pendiente) p.nombre = 'Pendiente ' + (++n); }); x.dotacion = 2; return; }
   if (x.dotacion || !Array.isArray(x.personal)) return;
   const D = [['Supervisor', 2], ['Bodeguero', 9], ['Operador grúa horquilla', 4], ['Dimensionado', 1], ['Asistente técnico (arriendo)', 1], ['Chófer A4', 2], ['Chófer B', 2]];
   const mapa = { 'Horquillero': 'Operador grúa horquilla', 'Chofer': 'Chófer A4' };
@@ -1489,10 +1490,11 @@ function migrarDotacion(x){
   D.forEach(([cargo, req]) => {
     const r = reales.filter(p => p.cargo === cargo); r.forEach(p => { out.push(p); usados.add(p.id); });
     const falta = Math.max(0, req - r.length);
-    for (let i = 1; i <= falta; i++) out.push({ id: uid(), nombre: (falta === 1 ? cargo : cargo + ' ' + i) + ' (pendiente)', cargo, turno: '', descanso: '', telefono: '', pendiente: true });
+    for (let i = 1; i <= falta; i++) out.push({ id: uid(), nombre: 'Pendiente', cargo, turno: '', descanso: '', telefono: '', pendiente: true });
   });
   reales.forEach(p => { if (!usados.has(p.id)) out.push(p); });
-  x.personal = out; x.dotacion = 1;
+  let n = 0; out.forEach(p => { if (p.pendiente) p.nombre = 'Pendiente ' + (++n); });
+  x.personal = out; x.dotacion = 2;
 }
 const PERSONAL_INICIAL = [['Leonardo Ponce Gómez','Supervisor','A','Lunes'],['Michael Olivares Fontanilla','Bodeguero','A','Martes'],['Jaime Ossandón Vargas','Bodeguero','A',''],
   ['Alexis Aguirre Jáuregui','Bodeguero','A','Miércoles'],['Christian Ramírez Pizarro','Bodeguero','B',''],['Álvaro Zamora Miranda','Horquillero','B',''],['Álvaro Gómez Gaete','Bodeguero','B',''],['Zabdy Varas Maldonado','Bodeguero','B','Lunes']];
@@ -1530,7 +1532,7 @@ function vPersonal(){
   ${resumenTurnos()}
   <details class="noprint" style="margin:8px 0"><summary style="cursor:pointer;color:var(--az)">Dotación definitiva por cargo</summary><table style="width:auto;margin-top:6px"><thead><tr><th>Cargo</th><th>Dotación</th><th>Asignados</th><th>Pendientes</th></tr></thead><tbody>${resumen}</tbody></table></details>
   <table style="margin-top:8px"><thead><tr><th>#</th>${[['nombre', 'Nombre'], ['cargo', 'Cargo'], ['turno', 'Turno'], ['descanso', 'Día de descanso'], ['telefono', 'Teléfono']].map(([k, l]) => `<th style="cursor:pointer;user-select:none;white-space:nowrap" title="Ordenar por ${l.toLowerCase()}" onclick="sortP('${k}')">${l} ${PSORT && PSORT.k === k ? (PSORT.d === 1 ? '▲' : '▼') : '<span style="opacity:.3">↕</span>'}</th>`).join('')}<th class="noprint">${PSORT ? '<button class="bx" title="Volver al orden manual" onclick="PSORT=null;vPersonal()">↺</button>' : ''}</th></tr></thead><tbody>
-  ${filasP().map(({ p, i }, n) => `<tr><td>${n + 1}</td><td><input value="${esc(p.nombre)}" ${p.pendiente ? 'style="font-style:italic;opacity:.75"' : ''} onchange="S.personal[${i}].nombre=this.value;if(S.personal[${i}].pendiente&&this.value.trim()&&!/pendiente/i.test(this.value))delete S.personal[${i}].pendiente;guardar();vPersonal()"></td>
+  ${filasP().map(({ p, i }, n) => `<tr><td>${n + 1}</td><td><input value="${esc(p.nombre)}" ${p.pendiente ? 'style="font-style:italic;opacity:.75" onfocus="this.select()" oninput="if(this.value.trim()&&!/^\\s*pendiente/i.test(this.value)){this.style.fontStyle=\'normal\';this.style.opacity=1}"' : ''} onchange="S.personal[${i}].nombre=this.value;if(S.personal[${i}].pendiente&&this.value.trim()&&!/^\s*pendiente/i.test(this.value))delete S.personal[${i}].pendiente;guardar();vPersonal()"></td>
     <td>${sel(i, 'cargo', CARGOS)}</td><td style="width:70px">${sel(i, 'turno', ['A','B'])}</td><td>${sel(i, 'descanso', DIAS.slice(0, 5))}${!p.descanso ? ' <span class="warn" title="sin día de descanso">⚠</span>' : ''}</td>
     <td><input value="${esc(p.telefono || '')}" onchange="S.personal[${i}].telefono=this.value;guardar()"></td>
     <td class="noprint" style="white-space:nowrap">${PSORT ? '' : `<button class="bx" title="Subir" onclick="moverP(${i},-1)">▲</button><button class="bx" title="Bajar" onclick="moverP(${i},1)">▼</button> `}<button class="bx" title="Eliminar" onclick="if(confirm('¿Eliminar a ${esc(p.nombre).replace(/'/g, '')}?')){S.personal.splice(${i},1);guardar();vPersonal()}">✕</button></td></tr>`).join('')}
@@ -1564,7 +1566,7 @@ function horarioDia(p, d, lunesIso){
   const h = horarioBase(p, d, gm);
   // supervisor: si el supervisor del otro turno está libre, hace las dos jornadas
   if (!h.libre && p.cargo === 'Supervisor'){
-    const otroLibre = S.personal.some(o => !o.pendiente && o.id !== p.id && o.cargo === 'Supervisor' && o.turno !== p.turno && horarioDia_simple(o, d, lunesIso, gm).libre);
+    const otroLibre = S.personal.some(o => o.id !== p.id && o.cargo === 'Supervisor' && o.turno !== p.turno && horarioDia_simple(o, d, lunesIso, gm).libre);
     if (otroLibre){ const H = S.turnos.horario; return d === 6 ? { ...H.domingo, doble: true } : { e: H.manana.e, c: h.c, s: H.tarde.s, doble: true }; }
   }
   return h;
@@ -1580,7 +1582,7 @@ function vTurnos(){
   const fechas = [...Array(7)].map((_, d) => { const x = new Date(L0); x.setDate(x.getDate() + d); return x; });
   const ddmm = x => `${String(x.getDate()).padStart(2, '0')}-${String(x.getMonth() + 1).padStart(2, '0')}`;
   const H = S.turnos.horario;
-  const orden = [...activos()].sort((a, b) => (a.turno === gm ? 0 : 1) - (b.turno === gm ? 0 : 1));
+  const orden = [...S.personal].sort((a, b) => (a.turno === gm ? 0 : 1) - (b.turno === gm ? 0 : 1));
   const celda = (p, d) => { const h = horarioDia(p, d, SEMANA);
     const on = `data-k="${p.id}|${d}" onclick="selTurno('${p.id}|${d}')" ondblclick="editarTurno('${p.id}',${d})" title="Doble clic para cambiar"`;
     if (h.libre) return `<td colspan="3" class="tlibre ${h.cambiado ? 'tcam' : ''}" ${on}>LIBRE</td>`;
@@ -1647,7 +1649,7 @@ function imprimirTurnos(modo){
     .tp th.nom{width:${red ? 13 : 16}%} .tp td.nom{text-align:left;padding-left:5px;white-space:nowrap;overflow:hidden} .tp th:nth-child(2){width:${red ? 3 : 3.5}%}
     .cg{color:#555;font-size:9px} .lib{background:#e5e7eb;font-weight:bold;letter-spacing:${red ? 0 : 2}px;color:#444} .dob{background:#fde2c4;font-weight:bold}
     .gm{background:#FFF2CC} .gt{background:#DDEBF7} .lib,.dob,.gm,.gt{-webkit-print-color-adjust:exact;print-color-adjust:exact}</style>`;
-  const man = activos().filter(p => p.turno === gm), tar = activos().filter(p => p.turno !== gm);
+  const man = S.personal.filter(p => p.turno === gm), tar = S.personal.filter(p => p.turno !== gm);
   let cuerpo;
   if (porTurno) cuerpo = [[man, `Turno mañana — turno ${gm}`], [tar, `Turno tarde — turno ${gt}`]].map(([lista, nom]) =>
     `<div class="hoja"><h1>${tit}</h1><p class="sub2"><b>${nom}</b>${lista === man ? ' · trabaja el domingo' : ''}</p>${tablaImpresion(lista, red, gm)}</div>`).join('');
