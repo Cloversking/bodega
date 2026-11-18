@@ -1500,17 +1500,26 @@ const CARGOS = ['Supervisor','Bodeguero','Operador grúa horquilla','Dimensionad
 const activos = () => S.personal.filter(p => !p.pendiente);
 const DIAS = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
 const DIAS3 = ['lun','mar','mié','jue','vie','sáb','dom'];
+let PSORT = null; // { k: 'nombre'|'cargo'|'turno'|'descanso'|'telefono', d: 1|-1 } — solo cambia cómo se ve, no el orden guardado
+function sortP(k){ PSORT = !PSORT || PSORT.k !== k ? { k, d: 1 } : { k, d: -PSORT.d }; vPersonal(); }
+function filasP(){
+  const L = S.personal.map((p, i) => ({ p, i }));
+  if (!PSORT) return L;
+  const { k, d } = PSORT, nz = v => String(v || '').trim() === '';
+  const val = p => k === 'descanso' ? DIAS.indexOf(p.descanso) : String(p[k] || '');
+  return L.sort((a, b) => { const va = a.p[k], vb = b.p[k]; if (nz(va) !== nz(vb)) return nz(va) ? 1 : -1; if (nz(va)) return a.i - b.i; const x = val(a.p), y = val(b.p); const c = typeof x === 'number' ? x - y : x.localeCompare(y, 'es', { numeric: true, sensitivity: 'base' }); return c * d || a.i - b.i; });
+}
 function vPersonal(){
   const sel = (i, k, ops) => `<select onchange="S.personal[${i}].${k}=this.value;guardar();vPersonal()"><option value=""></option>${ops.map(o => `<option ${S.personal[i][k] === o ? 'selected' : ''}>${o}</option>`).join('')}</select>`;
   const pend = S.personal.filter(p => p.pendiente).length;
   const resumen = DOTACION.map(([c, req]) => { const as = S.personal.filter(p => p.cargo === c && !p.pendiente).length; return `<tr><td>${c}</td><td class="num">${req}</td><td class="num">${as}</td><td class="num" style="color:${as >= req ? '#166534' : '#b45309'}">${Math.max(0, req - as)}</td></tr>`; }).join('');
   $('#main').innerHTML = `<div class="card"><div class="row"><h2 style="flex:1;margin:0">Personal de bodega (${S.personal.length - pend} de ${DOTACION.reduce((a, d) => a + d[1], 0)} · ${pend} pendientes)</h2><button class="b2 noprint" onclick="window.print()">🖨 Imprimir</button></div>
   <details class="noprint" style="margin:8px 0"><summary style="cursor:pointer;color:var(--az)">Dotación definitiva por cargo</summary><table style="width:auto;margin-top:6px"><thead><tr><th>Cargo</th><th>Dotación</th><th>Asignados</th><th>Pendientes</th></tr></thead><tbody>${resumen}</tbody></table></details>
-  <table style="margin-top:8px"><thead><tr><th>#</th><th>Nombre</th><th>Cargo</th><th>Turno</th><th>Día de descanso</th><th>Teléfono</th><th class="noprint"></th></tr></thead><tbody>
-  ${S.personal.map((p, i) => `<tr><td>${i + 1}</td><td><input value="${esc(p.nombre)}" ${p.pendiente ? 'style="font-style:italic;opacity:.75"' : ''} onchange="S.personal[${i}].nombre=this.value;if(S.personal[${i}].pendiente&&this.value.trim()&&!/pendiente/i.test(this.value))delete S.personal[${i}].pendiente;guardar();vPersonal()"></td>
+  <table style="margin-top:8px"><thead><tr><th>#</th>${[['nombre', 'Nombre'], ['cargo', 'Cargo'], ['turno', 'Turno'], ['descanso', 'Día de descanso'], ['telefono', 'Teléfono']].map(([k, l]) => `<th style="cursor:pointer;user-select:none;white-space:nowrap" title="Ordenar por ${l.toLowerCase()}" onclick="sortP('${k}')">${l} ${PSORT && PSORT.k === k ? (PSORT.d === 1 ? '▲' : '▼') : '<span style="opacity:.3">↕</span>'}</th>`).join('')}<th class="noprint">${PSORT ? '<button class="bx" title="Volver al orden manual" onclick="PSORT=null;vPersonal()">↺</button>' : ''}</th></tr></thead><tbody>
+  ${filasP().map(({ p, i }, n) => `<tr><td>${n + 1}</td><td><input value="${esc(p.nombre)}" ${p.pendiente ? 'style="font-style:italic;opacity:.75"' : ''} onchange="S.personal[${i}].nombre=this.value;if(S.personal[${i}].pendiente&&this.value.trim()&&!/pendiente/i.test(this.value))delete S.personal[${i}].pendiente;guardar();vPersonal()"></td>
     <td>${sel(i, 'cargo', CARGOS)}</td><td style="width:70px">${sel(i, 'turno', ['A','B'])}</td><td>${sel(i, 'descanso', DIAS.slice(0, 5))}${!p.descanso ? ' <span class="warn" title="sin día de descanso">⚠</span>' : ''}</td>
     <td><input value="${esc(p.telefono || '')}" onchange="S.personal[${i}].telefono=this.value;guardar()"></td>
-    <td class="noprint" style="white-space:nowrap"><button class="bx" title="Subir" onclick="moverP(${i},-1)">▲</button><button class="bx" title="Bajar" onclick="moverP(${i},1)">▼</button> <button class="bx" title="Eliminar" onclick="if(confirm('¿Eliminar a ${esc(p.nombre).replace(/'/g, '')}?')){S.personal.splice(${i},1);guardar();vPersonal()}">✕</button></td></tr>`).join('')}
+    <td class="noprint" style="white-space:nowrap">${PSORT ? '' : `<button class="bx" title="Subir" onclick="moverP(${i},-1)">▲</button><button class="bx" title="Bajar" onclick="moverP(${i},1)">▼</button> `}<button class="bx" title="Eliminar" onclick="if(confirm('¿Eliminar a ${esc(p.nombre).replace(/'/g, '')}?')){S.personal.splice(${i},1);guardar();vPersonal()}">✕</button></td></tr>`).join('')}
   </tbody></table>
   <p class="noprint"><button class="b2" onclick="S.personal.push({id:uid(),nombre:'',cargo:'Bodeguero',turno:'',descanso:'',telefono:''});guardar();vPersonal()">+ Agregar trabajador</button></p>
   <p class="muted noprint">El turno A o B es el grupo: cada semana uno va de mañana (y trabaja el domingo) y el otro de tarde; se alternan solos en la pestaña Turnos.</p></div>`;
