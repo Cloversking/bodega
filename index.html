@@ -318,7 +318,7 @@ function login(){
   if (!x || x.hash !== hashPass(x.salt, p)) return toast('Usuario o contraseña incorrectos');
   USER = x; sessionStorage.setItem('desp_user', x.id); render();
 }
-function logout(){ USER = null; sessionStorage.removeItem('desp_user'); pantallaInicio(); }
+function logout(){ remuBloquear(); USER = null; sessionStorage.removeItem('desp_user'); pantallaInicio(); }
 
 /* ===================== NAVEGACIÓN ===================== */
 const TABS = [['ruta','🚚 Armar reparto'],['productos','⚖ Peso de productos'],['guardados','🗂 Repartos guardados'],['flota','🚛 Camiones'],['mapa','🗺 Mapa'],['sectores','📍 Sectores'],['personal','👥 Personal'],['turnos','📅 Turnos'],['estanteria','🗄 Estantería'],['admin','⚙ Administración']];
@@ -328,9 +328,10 @@ function render(){
   $('#btnOut').classList.remove('hide');
   $('#filestate').innerHTML = fileHandle ? '💾 ' + esc(fileHandle.name) : (fsOK ? '⚠ Sin archivo en pendrive' : '💻 Guardado en este computador');
   $('#nav').classList.remove('hide');
-  if (!TABS.some(x => x[0] === TAB)) TAB = 'ruta';
+  if (!TABS.some(x => x[0] === TAB) && !(TAB === 'remu' && USER.rol === 'admin')) TAB = 'ruta';
+  if (TAB !== 'remu') remuBloquear();
   $('#nav').innerHTML = TABS.filter(x => x[0] !== 'admin' || USER.rol === 'admin').map(([k, l]) => `<button class="${k === TAB ? 'on' : ''}" onclick="TAB='${k}';render()">${l}</button>`).join('');
-  ({ ruta: vRuta, productos: vProductos, guardados: vGuardados, flota: vFlota, sectores: vSectores, mapa: vMapa, personal: vPersonal, turnos: vTurnos, estanteria: vEstanteria, admin: vAdmin })[TAB]();
+  ({ ruta: vRuta, productos: vProductos, guardados: vGuardados, flota: vFlota, sectores: vSectores, mapa: vMapa, personal: vPersonal, turnos: vTurnos, estanteria: vEstanteria, admin: vAdmin, remu: vRemu })[TAB]();
 }
 
 /* ===================== VEHÍCULOS: ¿CABE? ===================== */
@@ -1690,6 +1691,241 @@ function vSectores(){
 }
 
 /* ===================== ADMINISTRACIÓN ===================== */
+/* ===================== REMUNERACIÓN (sección oculta, solo admin, protegida con PIN) =====================
+   Los datos se guardan CIFRADOS (AES-GCM, clave derivada del PIN con PBKDF2) dentro de S.remu, junto al resto del archivo de datos.
+   Sin el PIN no se pueden leer. Si se olvida el PIN, esos datos no se pueden recuperar. */
+const REMU = { d: null, key: null, salt: null, tab: 'liq', ym: null, timer: null };
+const REMU_AFP = { 'Uno': 0.46, 'Modelo': 0.58, 'PlanVital': 1.16, 'Habitat': 1.27, 'Capital': 1.44, 'Cuprum': 1.44, 'ProVida': 1.45 };
+const REMU_TRAMOS = [[13.5, 0, 0], [30, .04, .54], [50, .08, 1.74], [70, .135, 4.49], [90, .23, 11.14], [120, .304, 17.8], [310, .35, 23.32], [1e9, .4, 38.82]]; // [hasta UTM, factor, rebaja UTM]
+const REMU_FER = [['2026-01-01',1],['2026-04-03'],['2026-04-04'],['2026-05-01',1],['2026-05-21'],['2026-06-21'],['2026-06-29'],['2026-07-16'],['2026-08-15'],['2026-09-18',1],['2026-09-19',1],['2026-10-12'],['2026-10-31'],['2026-11-01'],['2026-12-08'],['2026-12-25',1],['2027-01-01',1],['2027-10-11'],['2027-10-31'],['2027-11-01'],['2027-12-08']];
+const $r = (v, d = 0) => (isFinite(v) ? Math.round(v * 10 ** d) / 10 ** d : 0);
+const clp = v => (v < 0 ? '−$ ' : '$ ') + Math.abs(Math.round(v)).toLocaleString('es-CL');
+const _b64 = u8 => { let s = ''; for (let i = 0; i < u8.length; i++) s += String.fromCharCode(u8[i]); return btoa(s); };
+const _unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+async function remuKey(pin, salt){
+  const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 250000, hash: 'SHA-256' }, k, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+}
+async function remuCifrar(){
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, REMU.key, new TextEncoder().encode(JSON.stringify(REMU.d)));
+  S.remu = { v: 1, s: _b64(REMU.salt), i: _b64(iv), c: _b64(new Uint8Array(ct)) };
+  guardar();
+}
+async function remuAbrir(pin){
+  try {
+    const salt = _unb64(S.remu.s), key = await remuKey(pin, salt);
+    const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: _unb64(S.remu.i) }, key, _unb64(S.remu.c));
+    REMU.d = JSON.parse(new TextDecoder().decode(pt)); REMU.key = key; REMU.salt = salt; return true;
+  } catch (e){ return false; }
+}
+function remuBloquear(){ REMU.d = null; REMU.key = null; clearTimeout(REMU.timer); }
+function remuTick(){ clearTimeout(REMU.timer); REMU.timer = setTimeout(() => { if (REMU.d){ remuBloquear(); if (TAB === 'remu') vRemu(); toast('Remuneración bloqueada por inactividad'); } }, 5 * 60 * 1000); }
+function remuDefault(){
+  const p = (S.personal || []).find(x => /LEONARDO/.test(norm(x.nombre))) || (S.personal || [])[0] || {};
+  return { v: 1, pid: p.id || '',
+    c: { base: 0, hs: 42, gr: 'legal', grM: 0, bonos: [], noimp: [{ n: 'Colación', m: 0 }, { n: 'Movilización', m: 0 }], afp: 'Modelo', afpC: REMU_AFP.Modelo, afpT: 10, salud: 'fonasa', plan: 0, ces: true, rec: 50, atraso: false, fest: 'ninguno', festV: 0, otros: [] },
+    par: { imm: 553553, uf: 41300, utm: 72440, tope: 90, topeC: 135.2, tgr: 4.75 },
+    fer: REMU_FER.map(([f, i]) => ({ f, irr: !!i })), reg: {}, aj: {}, rec: {} };
+}
+/* ---- cálculo de la liquidación de un mes ---- */
+function remuCalc(D, ym){
+  const [Y, M] = ym.split('-').map(Number), p = S.personal.find(x => x.id === D.pid);
+  if (!p) return { err: 'Elige al trabajador en “Contrato y parámetros”.' };
+  const c = D.c, par = D.par, colMin = n(S.turnos.horario.colMin, 60), det = [];
+  const feri = new Map(D.fer.map(x => [x.f, x]));
+  const primero = new Date(Y, M - 1, 1), ultimo = new Date(Y, M, 0);
+  const ini = lunesDe(primero), fin = new Date(ultimo); fin.setDate(fin.getDate() + ((7 - ((ultimo.getDay() + 6) % 7) - 1) % 7)); // domingo de la última semana
+  const semanas = {}; const dias = [];
+  const faltas = [], lics = []; let atrMin = 0, festDias = 0, festMin = 0;
+  for (let d = new Date(ini); d <= fin; d.setDate(d.getDate() + 1)){
+    const di = iso(d), lun = iso(lunesDe(d)), dw = (d.getDay() + 6) % 7, enMes = d >= primero && d <= ultimo;
+    const h = horarioDia(p, dw, lun), r = D.reg[di] || {};
+    const prog = (!h.libre && h.e && h.s) ? minutos(h.s) - minutos(h.e) - (h.c ? colMin : 0) : 0;
+    let real = prog, est = h.libre ? 'libre' : 'turno', manual = false;
+    if (r.t === 'falta' || r.t === 'licencia' || r.t === 'libre'){ real = 0; est = r.t; manual = true; }
+    else if (r.t === 'vacaciones' || r.t === 'permiso'){ est = r.t; manual = true; }
+    else if (r.e && r.s){ const col = (r.c !== undefined && r.c !== '') ? n(r.c) : (h.c ? colMin : 0); real = minutos(r.s) - minutos(r.e) - col; est = 'manual'; manual = true; }
+    if (real < 0) real = 0;
+    const sem = semanas[lun] = semanas[lun] || { lun, prog: 0, real: 0, dom: null }; sem.prog += prog; sem.real += real; if (dw === 6) sem.dom = di;
+    const fer = feri.get(di);
+    if (enMes){
+      if (est === 'falta') faltas.push(di); if (est === 'licencia') lics.push(di);
+      if (c.atraso && r.e && h.e && !h.libre) atrMin += Math.max(0, minutos(r.e) - minutos(h.e));
+      if (real > 0 && (dw === 6 || fer)){ festDias++; festMin += real; }
+    }
+    dias.push({ di, dw, enMes, h, prog, real, est, manual, fer, r });
+  }
+  const base = n(c.base), vDia = base / 30, vHora = base * 7 / (30 * Math.max(1, n(c.hs, 42))), vHE = vHora * (1 + n(c.rec, 50) / 100);
+  let heMin = 0;
+  Object.values(semanas).forEach(s => {
+    if (!s.dom || s.dom.slice(0, 7) !== ym) return; // la semana se paga con el mes en que termina (domingo)
+    const ex = Math.max(0, s.real - n(c.hs, 42) * 60); heMin += ex;
+    det.push(`Semana del ${s.lun.split('-').reverse().join('-')}: programadas ${fmt(s.prog / 60, 2)} h · reales ${fmt(s.real / 60, 2)} h · límite ${n(c.hs, 42)} h → ${ex ? '<b>' + fmt(ex / 60, 2) + ' h extra</b>' : 'sin extras'}`);
+  });
+  const descFalt = (faltas.length + lics.length) * vDia, sueldo = base - descFalt;
+  const bonosImp = c.bonos.filter(b => b.imp !== false).reduce((a, b) => a + n(b.m), 0), bonosNo = c.bonos.filter(b => b.imp === false).reduce((a, b) => a + n(b.m), 0);
+  const noimp = c.noimp.reduce((a, b) => a + n(b.m), 0);
+  const heVal = heMin / 60 * vHE;
+  let festVal = 0;
+  if (c.fest === 'recargo') festVal = festMin / 60 * vHora * n(c.festV) / 100;
+  if (c.fest === 'dia') festVal = festDias * n(c.festV) * vDia;
+  const atrVal = atrMin / 60 * vHora;
+  let grat = 0; const topeGr = n(par.imm) * n(par.tgr, 4.75) / 12;
+  if (c.gr === 'legal') grat = Math.min(0.25 * (sueldo + bonosImp), topeGr); else if (c.gr === 'fija') grat = n(c.grM);
+  const imponible = sueldo + grat + heVal + festVal + bonosImp - atrVal;
+  const topeAfp = n(par.tope, 90) * n(par.uf), topeCes = n(par.topeC, 135.2) * n(par.uf);
+  const impAfp = Math.min(imponible, topeAfp);
+  const afp = impAfp * (n(c.afpT, 10) + n(c.afpC)) / 100;
+  const salud7 = impAfp * 0.07; let salud = salud7; if (c.salud === 'isapre') salud = Math.max(salud7, n(c.plan) * n(par.uf));
+  const ces = c.ces ? Math.min(imponible, topeCes) * 0.006 : 0;
+  const baseTrib = Math.max(0, imponible - afp - salud7 - ces);
+  const utm = n(par.utm); let imp = 0, tramo = 0;
+  for (let i = 0; i < REMU_TRAMOS.length; i++){ if (baseTrib <= REMU_TRAMOS[i][0] * utm){ tramo = i; break; } tramo = i; }
+  imp = Math.max(0, baseTrib * REMU_TRAMOS[tramo][1] - REMU_TRAMOS[tramo][2] * utm);
+  const aj = D.aj[ym] || {}, otrosFijos = c.otros.reduce((a, b) => a + n(b.m), 0);
+  const haberes = imponible + noimp + bonosNo + n(aj.otH);
+  const descLeg = afp + salud + ces + imp, otros = otrosFijos + n(aj.ant) + n(aj.otD);
+  const liquido = haberes - descLeg - otros;
+  det.unshift(`Valor día = sueldo base ÷ 30 = ${clp(vDia)} · Valor hora = sueldo base × 7 ÷ (30 × ${n(c.hs, 42)} h) = ${clp(vHora)} · Hora extra (+${n(c.rec, 50)} %) = ${clp(vHE)}`);
+  if (faltas.length) det.push(`Faltas: ${faltas.length} día(s) → descuento ${clp(faltas.length * vDia)}`);
+  if (lics.length) det.push(`Licencia médica: ${lics.length} día(s) → el empleador no paga (${clp(lics.length * vDia)}); lo cubre el subsidio, que no está en este cálculo`);
+  if (atrMin) det.push(`Atrasos: ${atrMin} min → descuento ${clp(atrVal)}`);
+  det.push(`Domingos/festivos trabajados: ${festDias} día(s), ${fmt(festMin / 60, 2)} h · modalidad: ${{ ninguno: 'sin pago extra (se compensa con descanso)', recargo: 'recargo ' + n(c.festV) + ' % sobre la hora', dia: n(c.festV) + ' día(s) extra por cada uno' }[c.fest]}`);
+  det.push(`Gratificación legal (art. 50): 25 % de ${clp(sueldo + bonosImp)} con tope mensual ${clp(topeGr)} (${n(par.tgr, 4.75)} IMM ÷ 12)`);
+  det.push(`Base del impuesto único: ${clp(baseTrib)} (imponible − AFP − salud 7 % − cesantía) · tramo ${tramo + 1}${tramo === 0 ? ' (exento)' : ''}`);
+  return { dias, sueldo, descFalt, grat, heMin, heVal, festVal, bonosImp, bonosNo, noimp, atrVal, imponible, afp, salud, salud7, ces, imp, haberes, descLeg, otros, otrosFijos, aj, liquido, det, vDia, vHora, vHE, topeAfp, baseTrib };
+}
+/* ---- edición y guardado ---- */
+async function remuGuardar(){ remuTick(); try { await remuCifrar(); } catch (e){ toast('No se pudo guardar la remuneración'); } }
+function remuSet(path, v, t){
+  const ks = path.split('.'); let o = REMU.d; for (let i = 0; i < ks.length - 1; i++) o = o[ks[i]];
+  const k = ks[ks.length - 1]; o[k] = t === 'n' ? n(v) : t === 'b' ? !!v : v; remuGuardar(); vRemu();
+}
+function remuReg(di, k, v){
+  const r = REMU.d.reg[di] = REMU.d.reg[di] || {}; if (v === '' || v == null) delete r[k]; else r[k] = v;
+  if (k === 't' && v) { delete r.e; delete r.s; delete r.c; }
+  if ((k === 'e' || k === 's') && v) delete r.t;
+  if (!Object.keys(r).length) delete REMU.d.reg[di]; remuGuardar(); vRemu();
+}
+function remuAj(ym, k, v){ const a = REMU.d.aj[ym] = REMU.d.aj[ym] || {}; a[k] = k === 'nota' ? v : n(v); remuGuardar(); vRemu(); }
+function remuRec(ym, v){ if (String(v).trim() === '') delete REMU.d.rec[ym]; else REMU.d.rec[ym] = { liq: n(v) }; remuGuardar(); vRemu(); }
+function remuLista(path, i, k, v){ const l = path.split('.').reduce((o, x) => o[x], REMU.d); l[i][k] = (k === 'm') ? n(v) : (k === 'imp' || k === 'irr') ? !!v : v; remuGuardar(); vRemu(); }
+function remuAdd(path, obj){ path.split('.').reduce((o, x) => o[x], REMU.d).push(obj); remuGuardar(); vRemu(); }
+function remuDel(path, i){ path.split('.').reduce((o, x) => o[x], REMU.d).splice(i, 1); remuGuardar(); vRemu(); }
+async function remuCrear(){
+  const a = $('#rp1').value, b = $('#rp2').value;
+  if (a.length < 4) return toast('El PIN debe tener al menos 4 caracteres (mejor 8 o más)');
+  if (a !== b) return toast('Los PIN no coinciden');
+  REMU.salt = crypto.getRandomValues(new Uint8Array(16)); REMU.key = await remuKey(a, REMU.salt); REMU.d = remuDefault();
+  await remuCifrar(); toast('PIN creado'); vRemu();
+}
+async function remuDesbloquear(){ const ok = await remuAbrir($('#rp1').value); if (!ok) return toast('PIN incorrecto'); vRemu(); }
+async function remuCambiarPin(){
+  const a = prompt('Nuevo PIN (mínimo 4 caracteres, mejor 8 o más):'); if (!a || a.length < 4) return;
+  const b = prompt('Repite el nuevo PIN:'); if (a !== b) return toast('Los PIN no coinciden');
+  REMU.salt = crypto.getRandomValues(new Uint8Array(16)); REMU.key = await remuKey(a, REMU.salt); await remuCifrar(); toast('PIN cambiado');
+}
+/* ---- pantalla ---- */
+function vRemu(){
+  if (!USER || USER.rol !== 'admin'){ TAB = 'ruta'; return render(); }
+  const m = $('#main');
+  if (!S.remu){
+    m.innerHTML = `<div class="card" style="max-width:460px"><h2>Remuneración</h2><p class="muted">Sección privada. Crea un PIN: los datos se guardan cifrados dentro del archivo de datos y nadie podrá leerlos sin el PIN. <b>Si lo olvidas no se pueden recuperar.</b> Usa 8 o más caracteres.</p>
+      <div class="row"><label>PIN<input id="rp1" type="password" autocomplete="new-password"></label><label>Repetir PIN<input id="rp2" type="password" autocomplete="new-password"></label><button class="b" onclick="remuCrear()">Crear</button></div></div>`; return;
+  }
+  if (!REMU.d){
+    m.innerHTML = `<div class="card" style="max-width:420px"><h2>Remuneración</h2><div class="row"><label>PIN<input id="rp1" type="password" autocomplete="off" onkeydown="if(event.key==='Enter')remuDesbloquear()" autofocus></label><button class="b" onclick="remuDesbloquear()">Abrir</button></div></div>`; setTimeout(() => $('#rp1') && $('#rp1').focus(), 50); return;
+  }
+  remuTick(); const D = REMU.d; if (!REMU.ym) REMU.ym = iso(new Date()).slice(0, 7);
+  const tabs = [['liq', 'Liquidación'], ['reg', 'Registro diario'], ['con', 'Contrato y parámetros']];
+  const barra = `<div class="card"><div class="row" style="align-items:end"><h2 style="margin:0">Remuneración</h2>
+    <label>Mes<input type="month" value="${REMU.ym}" onchange="REMU.ym=this.value||REMU.ym;vRemu()"></label>
+    ${tabs.map(([k, l]) => `<button class="${REMU.tab === k ? 'b' : 'b2'}" onclick="REMU.tab='${k}';vRemu()">${l}</button>`).join('')}
+    <span style="flex:1"></span><button class="b2" onclick="remuCambiarPin()">Cambiar PIN</button><button class="b2" onclick="remuBloquear();vRemu()">🔒 Bloquear</button></div></div>`;
+  m.innerHTML = barra + ({ liq: remuHtmlLiq, reg: remuHtmlReg, con: remuHtmlCon })[REMU.tab](D);
+}
+function remuHtmlLiq(D){
+  const ym = REMU.ym, R = remuCalc(D, ym); if (R.err) return `<div class="card"><p class="warn">${R.err}</p></div>`;
+  const c = D.c, rec = D.rec[ym], aj = R.aj;
+  const f = (l, v, neg, nota) => `<tr><td>${l}${nota ? ` <span class="muted">${nota}</span>` : ''}</td><td class="num">${neg ? clp(-Math.abs(v)) : clp(v)}</td></tr>`;
+  const sec = t => `<tr><th colspan="2" style="text-align:left;background:#eef2fa">${t}</th></tr>`;
+  const tot = (l, v) => `<tr><td><b>${l}</b></td><td class="num"><b>${clp(v)}</b></td></tr>`;
+  const sinBase = n(c.base) <= 0 ? '<p class="warn">Aún no hay sueldo base: completa “Contrato y parámetros” (cuando tengas el contrato).</p>' : '';
+  const dif = rec ? rec.liq - R.liquido : null;
+  const hist = Object.keys(D.rec).sort().reverse().map(k => { const x = remuCalc(D, k); if (x.err) return ''; const d = D.rec[k].liq - x.liquido; return `<tr><td>${k}</td><td class="num">${clp(x.liquido)}</td><td class="num">${clp(D.rec[k].liq)}</td><td class="num" style="color:${Math.abs(d) < 1 ? '#166534' : d < 0 ? '#b91c1c' : '#1d4ed8'}"><b>${clp(d)}</b></td></tr>`; }).join('');
+  return `${sinBase}<div class="card"><h3 style="margin-top:0">Liquidación de ${ym} — ${esc((S.personal.find(x => x.id === D.pid) || {}).nombre || '')}</h3>
+    <table style="max-width:640px"><tbody>
+    ${sec('HABERES')}
+    ${f('Sueldo base', R.sueldo, false, R.descFalt ? '(descontadas faltas/licencias: ' + clp(R.descFalt) + ')' : '')}
+    ${R.grat ? f('Gratificación', R.grat) : ''}
+    ${R.heVal ? f('Horas extra', R.heVal, false, fmt(R.heMin / 60, 2) + ' h × ' + clp(R.vHE)) : ''}
+    ${R.festVal ? f('Domingos / festivos trabajados', R.festVal) : ''}
+    ${c.bonos.filter(b => b.imp !== false).map(b => f(esc(b.n || 'Bono'), n(b.m))).join('')}
+    ${R.atrVal ? f('Atrasos', R.atrVal, true) : ''}
+    ${tot('TOTAL IMPONIBLE', R.imponible)}
+    ${c.noimp.filter(b => n(b.m)).map(b => f(esc(b.n), n(b.m))).join('')}
+    ${c.bonos.filter(b => b.imp === false).map(b => f(esc(b.n || 'Bono no imponible'), n(b.m))).join('')}
+    ${n(aj.otH) ? f('Otros haberes del mes', n(aj.otH)) : ''}
+    ${tot('TOTAL HABERES', R.haberes)}
+    ${sec('DESCUENTOS')}
+    ${f('AFP ' + esc(c.afp) + ' (' + fmt(n(c.afpT, 10) + n(c.afpC), 2) + ' %)', R.afp, true)}
+    ${f(c.salud === 'isapre' ? 'Salud Isapre' : 'Salud Fonasa 7 %', R.salud, true)}
+    ${R.ces ? f('Seguro de cesantía 0,6 %', R.ces, true) : ''}
+    ${f('Impuesto único', R.imp, true)}
+    ${c.otros.filter(b => n(b.m)).map(b => f(esc(b.n), n(b.m), true)).join('')}
+    ${n(aj.ant) ? f('Anticipo / préstamo', n(aj.ant), true) : ''}${n(aj.otD) ? f('Otros descuentos del mes', n(aj.otD), true) : ''}
+    ${tot('TOTAL DESCUENTOS', R.descLeg + R.otros)}
+    <tr><td style="font-size:17px"><b>LÍQUIDO A RECIBIR</b></td><td class="num" style="font-size:20px;color:#1F3864"><b>${clp(R.liquido)}</b></td></tr>
+    </tbody></table></div>
+    <div class="card"><h3 style="margin-top:0">Comparar con lo que me pagaron</h3><div class="row">
+      <label>Líquido que recibí realmente<input value="${rec ? rec.liq : ''}" placeholder="monto" onchange="remuRec('${ym}',this.value)"></label>
+      <label>Anticipo / préstamo del mes<input value="${aj.ant || ''}" onchange="remuAj('${ym}','ant',this.value)"></label>
+      <label>Otros descuentos del mes<input value="${aj.otD || ''}" onchange="remuAj('${ym}','otD',this.value)"></label>
+      <label>Otros haberes del mes<input value="${aj.otH || ''}" onchange="remuAj('${ym}','otH',this.value)"></label></div>
+      ${dif === null ? '<p class="muted">Ingresa el líquido de tu liquidación para ver la diferencia.</p>' : Math.abs(dif) < 1 ? '<p style="color:#166534;font-size:16px"><b>✔ Sin diferencia.</b></p>' : `<p style="font-size:16px;color:${dif < 0 ? '#b91c1c' : '#1d4ed8'}"><b>${dif < 0 ? 'Te pagaron ' + clp(-dif) + ' MENOS de lo calculado' : 'Te pagaron ' + clp(dif) + ' MÁS de lo calculado'}</b></p>`}
+      ${hist ? `<table style="max-width:560px;margin-top:8px"><thead><tr><th>Mes</th><th class="num">Calculado</th><th class="num">Recibido</th><th class="num">Diferencia</th></tr></thead><tbody>${hist}</tbody></table>` : ''}</div>
+    <div class="card"><h3 style="margin-top:0">Detalle del cálculo</h3><ul style="margin:0;padding-left:18px;font-size:13px">${R.det.map(x => `<li>${x}</li>`).join('')}</ul>
+      <p class="muted">Cálculo referencial con los parámetros de “Contrato y parámetros”; no reemplaza la liquidación oficial. Las semanas se asignan al mes en que termina el domingo.</p></div>`;
+}
+function remuHtmlReg(D){
+  const ym = REMU.ym, R = remuCalc(D, ym); if (R.err) return `<div class="card"><p class="warn">${R.err}</p></div>`;
+  const ES = [['', 'Según turno'], ['falta', 'Falta'], ['licencia', 'Licencia médica'], ['vacaciones', 'Vacaciones'], ['permiso', 'Permiso con goce'], ['libre', 'No trabajé (aunque el turno decía)']];
+  const rows = R.dias.filter(x => x.enMes).map(x => {
+    const r = x.r, hp = x.h.libre ? '<span class="muted">libre</span>' : `${x.h.e}–${x.h.s}`, fer = x.fer ? ` <span class="tag ${x.fer.irr ? 'REVISAR' : 'MEDIA'}" title="Feriado${x.fer.irr ? ' irrenunciable' : ''}">feriado${x.fer.irr ? ' irr.' : ''}</span>` : '';
+    const dif = x.real - x.prog;
+    return `<tr style="${x.dw === 6 ? 'background:#fff7ed' : ''}"><td>${x.di.slice(8)}/${x.di.slice(5, 7)}</td><td>${DIAS3[x.dw]}${fer}</td><td>${hp}</td>
+      <td><input type="time" value="${r.e || ''}" onchange="remuReg('${x.di}','e',this.value)"></td><td><input type="time" value="${r.s || ''}" onchange="remuReg('${x.di}','s',this.value)"></td>
+      <td><input style="width:54px" value="${r.c ?? ''}" placeholder="${x.h.c ? S.turnos.horario.colMin : 0}" onchange="remuReg('${x.di}','c',this.value)"></td>
+      <td><select onchange="remuReg('${x.di}','t',this.value)">${ES.map(([k, l]) => `<option value="${k}" ${(r.t || '') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></td>
+      <td class="num">${fmt(x.real / 60, 2)} h${dif ? ` <span style="color:${dif > 0 ? '#1d4ed8' : '#b91c1c'}">(${dif > 0 ? '+' : ''}${fmt(dif / 60, 2)})</span>` : ''}</td>
+      <td>${x.manual ? `<button class="bx" title="Volver a lo que dice el turno" onclick="remuReg('${x.di}','t','');delete REMU.d.reg['${x.di}'];remuGuardar();vRemu()">✕</button>` : ''}</td></tr>`;
+  }).join('');
+  return `<div class="card"><p class="muted" style="margin-top:0">Si no ingresas nada en un día, se asume que trabajaste lo que dice tu turno (pestaña Turnos, con sus cambios). Ingresa entrada y salida reales solo cuando difieran (horas extra, cambio de horario) o marca el estado del día.</p>
+    <table><thead><tr><th>Fecha</th><th>Día</th><th>Turno</th><th>Entrada real</th><th>Salida real</th><th>Colación (min)</th><th>Estado</th><th class="num">Horas trabajadas</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+function remuHtmlCon(D){
+  const c = D.c, par = D.par;
+  const I = (path, label, val, t = 'n', w = 110) => `<label>${label}<input style="width:${w}px" value="${esc(val)}" onchange="remuSet('${path}',this.value,'${t}')"></label>`;
+  const S2 = (path, label, val, opts) => `<label>${label}<select onchange="remuSet('${path}',this.value)">${opts.map(([k, l]) => `<option value="${k}" ${String(val) === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>`;
+  const lista = (path, arr, tit, extra) => `<h4 style="margin:10px 0 4px">${tit}</h4>${arr.map((b, i) => `<div class="row" style="align-items:end"><label>Nombre<input value="${esc(b.n)}" onchange="remuLista('${path}',${i},'n',this.value)"></label><label>Monto<input style="width:100px" value="${b.m}" onchange="remuLista('${path}',${i},'m',this.value)"></label>${extra ? `<label><span><input type="checkbox" ${b.imp !== false ? 'checked' : ''} onchange="remuLista('${path}',${i},'imp',this.checked)"> imponible</span></label>` : ''}<button class="bx" onclick="remuDel('${path}',${i})">✕</button></div>`).join('')}<button class="b2" onclick="remuAdd('${path}',${extra ? "{n:'',m:0,imp:true}" : "{n:'',m:0}"})">+ Agregar</button>`;
+  return `<div class="card"><h3 style="margin-top:0">Contrato</h3>
+    <div class="row"><label>Trabajador (de la pestaña Personal)<select onchange="remuSet('pid',this.value)">${S.personal.map(p => `<option value="${p.id}" ${p.id === D.pid ? 'selected' : ''}>${esc(p.nombre)}</option>`).join('')}</select></label>
+      ${I('c.base', 'Sueldo base mensual $', c.base)}${I('c.hs', 'Horas semanales del contrato', c.hs, 'n', 70)}${I('c.rec', 'Recargo hora extra %', c.rec, 'n', 60)}</div>
+    <div class="row">${S2('c.gr', 'Gratificación', c.gr, [['legal', 'Legal art. 50 (25 % con tope)'], ['fija', 'Monto fijo'], ['ninguna', 'No tiene']])}${c.gr === 'fija' ? I('c.grM', 'Monto gratificación $', c.grM) : ''}</div>
+    <div class="row"><label>AFP<select onchange="remuSet('c.afp',this.value);remuSet('c.afpC',REMU_AFP[this.value])">${Object.keys(REMU_AFP).map(k => `<option ${k === c.afp ? 'selected' : ''}>${k}</option>`).join('')}</select></label>${I('c.afpC', 'Comisión AFP %', c.afpC, 'n', 70)}${I('c.afpT', 'Cotización obligatoria %', c.afpT, 'n', 70)}
+      ${S2('c.salud', 'Salud', c.salud, [['fonasa', 'Fonasa (7 %)'], ['isapre', 'Isapre (plan en UF)']])}${c.salud === 'isapre' ? I('c.plan', 'Plan Isapre (UF)', c.plan, 'n', 80) : ''}
+      <label><span><input type="checkbox" ${c.ces ? 'checked' : ''} onchange="remuSet('c.ces',this.checked,'b')"> Contrato indefinido (cesantía 0,6 %)</span></label></div>
+    <div class="row">${S2('c.fest', 'Domingo / festivo trabajado', c.fest, [['ninguno', 'Sin pago extra (se compensa con descanso)'], ['recargo', 'Recargo % sobre la hora'], ['dia', 'Días extra de sueldo por cada uno']])}${c.fest !== 'ninguno' ? I('c.festV', c.fest === 'recargo' ? 'Recargo %' : 'Días extra', c.festV, 'n', 70) : ''}
+      <label><span><input type="checkbox" ${c.atraso ? 'checked' : ''} onchange="remuSet('c.atraso',this.checked,'b')"> Descontar atrasos (entrada real después de la programada)</span></label></div>
+    ${lista('c.bonos', c.bonos, 'Bonos y asignaciones', true)}${lista('c.noimp', c.noimp, 'No imponibles (colación, movilización, etc.)', false)}${lista('c.otros', c.otros, 'Otros descuentos fijos mensuales (sindicato, cuotas, etc.)', false)}</div>
+    <div class="card"><h3 style="margin-top:0">Parámetros legales (se actualizan)</h3><div class="row">${I('par.uf', 'Valor UF $', par.uf)}${I('par.utm', 'Valor UTM $', par.utm)}${I('par.imm', 'Ingreso mínimo $', par.imm)}${I('par.tope', 'Tope imponible AFP/salud (UF)', par.tope, 'n', 80)}${I('par.topeC', 'Tope cesantía (UF)', par.topeC, 'n', 80)}${I('par.tgr', 'Tope gratificación (IMM)', par.tgr, 'n', 70)}</div>
+      <p class="muted">Valores de referencia de nov-2026 (UF ≈ 41.300, UTM 72.440, ingreso mínimo 553.553, tope 90 UF, cesantía 135,2 UF, comisiones AFP según la Superintendencia de Pensiones). Cámbialos cada mes. El impuesto único usa la tabla del SII en UTM (8 tramos).</p></div>
+    <div class="card"><h3 style="margin-top:0">Feriados</h3><p class="muted" style="margin-top:0">Se usan para contar festivos trabajados. Marca “irrenunciable” en 1 ene, 1 may, 18 y 19 sep, 25 dic.</p>
+      <div style="max-height:260px;overflow:auto">${D.fer.map((x, i) => `<div class="row" style="align-items:center"><input type="date" value="${x.f}" onchange="remuLista('fer',${i},'f',this.value)"><label><span><input type="checkbox" ${x.irr ? 'checked' : ''} onchange="remuLista('fer',${i},'irr',this.checked)"> irrenunciable</span></label><button class="bx" onclick="remuDel('fer',${i})">✕</button></div>`).join('')}</div>
+      <button class="b2" onclick="remuAdd('fer',{f:'${iso(new Date())}',irr:false})">+ Agregar feriado</button></div>`;
+}
+
 function vAdmin(){
   $('#main').innerHTML = `<div class="grid2">
   <div class="card"><h2>Usuarios</h2>
@@ -1707,7 +1943,8 @@ function vAdmin(){
     <div class="row">${fsOK ? '<button class="b2" onclick="crearArchivo()">💾 Crear archivo de datos nuevo</button>' : ''}<button class="b2" onclick="abrirArchivo()">📂 Abrir datos del pendrive</button><button class="b2" onclick="exportar()">⬇ Descargar datos</button></div></div>
   <div class="card"><h2>Maestro de productos</h2>
     <p class="muted">${PRODUCTOS.length} productos incluidos · ${Object.keys(S.overrides).length} corregidos por ti. Para cargar correcciones masivas, importa un CSV con columnas: codigo;descripcion;peso_kg;largo_m;ancho_m;alto_m</p>
-    <input type="file" accept=".csv,.txt" onchange="importarMaestro(this.files[0])"></div></div>`;
+    <input type="file" accept=".csv,.txt" onchange="importarMaestro(this.files[0])"></div></div>
+  ${USER.rol === 'admin' ? `<p style="grid-column:1/-1;text-align:right;margin:2px 8px"><a href="#" onclick="TAB='remu';render();return false" style="color:#c3c8d2;font-size:11px;text-decoration:none">remuneración</a></p>` : ''}`;
 }
 function eliminarUsuario(i){
   const u = S.users[i]; if (u.id === USER.id) return;
