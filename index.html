@@ -31,7 +31,7 @@ th{background:var(--gr);text-align:left;padding:6px;border-bottom:2px solid var(
 td{padding:5px 6px;border-bottom:1px solid #e5e7eb;vertical-align:top}
 td input,td select{width:100%;padding:4px}
 .num{text-align:right}
-.tag{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:bold}
+.tag{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:bold}.OSALA{background:#dbeafe;color:#1e40af}.OBOD{background:#ffedd5;color:#9a3412}
 .ALTA{background:#dcfce7;color:#166534}.MEDIA{background:#fef9c3;color:#854d0e}.BAJA{background:#fee2e2;color:#9a3412}.REVISAR,.ESTIMADO{background:#fecaca;color:#991b1b}.IA{background:#e0e7ff;color:#3730a3}.EDITADO{background:#cffafe;color:#155e75}
 .muted{color:var(--mu);font-size:12px}
 .warn{color:var(--wa);font-weight:bold}.err{color:var(--er);font-weight:bold}.okc{color:var(--ok);font-weight:bold}
@@ -56,6 +56,7 @@ td input,td select{width:100%;padding:4px}
 .titulo-print{display:none}@media print{.titulo-print{display:block;font-size:15px;font-weight:bold;margin:0 0 4px}}
 </style>
 <link rel="manifest" href="manifest.json">
+<script src="catalogo.js"></script>
 <meta name="theme-color" content="#1F3864">
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -215,6 +216,15 @@ window.addEventListener('offline', () => $('#block').style.display = 'flex');
 window.addEventListener('online', chequearRed);
 
 /* ===================== PRODUCTOS ===================== */
+/* Catálogo ampliado: PRODUCTOS (bodega, con peso) + CATALOGO_EXTRA (sala y otros, peso estimado). p[9]: 'B' bodega / 'S' sala; p[10]: texto de búsqueda en caché */
+PRODUCTOS.forEach(p => { if (!p[9]) p[9] = 'B'; });
+if (typeof CATALOGO_EXTRA !== 'undefined'){
+  const _have = new Set(PRODUCTOS.map(p => norm(p[0]).trim()));
+  for (const p of CATALOGO_EXTRA){ const k = norm(p[0]).trim(); if (!_have.has(k)){ _have.add(k); PRODUCTOS.push(p); } }
+}
+const hayP = p => p[10] || (p[10] = norm(p[0] + ' ' + p[1]));
+const NB_BOD = PRODUCTOS.filter(p => p[9] !== 'S').length, NB_SALA = PRODUCTOS.length - NB_BOD;
+const badgeOrigen = p => p[9] === 'S' ? '<span class="tag OSALA">SALA</span>' : '<span class="tag OBOD">BODEGA</span>';
 const PMAP = new Map(PRODUCTOS.map(p => [norm(p[0]), p]));
 function producto(cod){
   const k = norm(cod).trim(); if (!k) return null;
@@ -1010,7 +1020,7 @@ function estModalRes(){
   const box = $('#estMRes'); if (!box) return; const e = S.estanteria, sc = box.scrollTop;
   const ws = norm(EST_MQ).split(/\s+/).filter(Boolean);
   if (!ws.length || norm(EST_MQ).replace(/\s/g, '').length < 2){ box.innerHTML = '<p class="muted">Escribe para buscar.</p>'; $('#estMCnt').textContent = ''; return; }
-  const r = []; for (const p of PRODUCTOS){ const c = String(p[0]); if (EST_MOCULTAR && e.prods[c]) continue; if (ws.every(w => norm(c + ' ' + p[1]).includes(w))){ r.push(p); if (r.length >= 150) break; } }
+  const r = []; for (const p of PRODUCTOS){ const c = String(p[0]); if (EST_MOCULTAR && e.prods[c]) continue; if (ws.every(w => hayP(p).includes(w))){ r.push(p); if (r.length >= 150) break; } }
   $('#estMCnt').textContent = r.length >= 150 ? 'Más de 150 resultados: agrega palabras para acotar' : r.length + ' resultado(s)';
   box.innerHTML = r.length ? `<table><tbody>${r.map(p => { const c = String(p[0]), mk = e.prods[c];
     return `<tr ${mk ? 'style="background:#ecfdf5"' : ''}><td style="white-space:nowrap;width:1%">${mk ? `<button class="b2" style="padding:3px 10px;white-space:nowrap" onclick="estMDesmarcar('${esc(c)}')" title="Quitar de la estantería">✓ Marcado · quitar</button>` : `<button class="b" style="padding:4px 12px;white-space:nowrap" onclick="estMMarcar('${esc(c)}')">＋ Marcar</button>`}</td>
@@ -1617,7 +1627,7 @@ function vProductos(){
     <label><span><input type="checkbox" id="qAct" checked onchange="buscar()"> Solo activos</span></label>
     <label><span><input type="checkbox" id="qEst" onchange="buscar()"> Solo estantería</span></label></div>
     <div id="res" style="max-height:420px;overflow:auto;margin-top:8px"></div>
-    <p class="muted">${PRODUCTOS.length} productos de bodega con peso y medidas estimadas. ALTA = dato exacto o calculado con medidas · MEDIA = con un supuesto · BAJA = valor típico · REVISAR = genérico.</p></div>
+    <p class="muted">${PRODUCTOS.length.toLocaleString("es-CL")} productos (${NB_BOD.toLocaleString("es-CL")} de bodega · ${NB_SALA.toLocaleString("es-CL")} de sala) con peso estimado. ALTA = dato exacto o calculado con medidas · MEDIA = con un supuesto · BAJA = valor típico · REVISAR = genérico (corrígelo con el botón Corregir).</p></div>
     <div class="card"><h2>Calcular traspaso / carga</h2><div id="calc"></div></div>`;
   buscar(); pintarCalc();
 }
@@ -1629,14 +1639,14 @@ function buscar(){
     for (const p of PRODUCTOS){
       if (est && !E.prods[p[0]]) continue;
       if (act && !p[8] && !est) continue;
-      const hay = norm(p[0] + ' ' + p[1]);
+      const hay = hayP(p);
       if (words.every(w => hay.includes(w))) res.push(p);
-      if (res.length >= (est ? 400 : 60)) break;
+      if (res.length >= (est ? 400 : 100)) break;
     }
   }
   $('#res').innerHTML = !words.length && !est ? '<p class="muted">Escribe para buscar.</p>' : !res.length ? '<p class="muted">Sin resultados.</p>' :
-  `<table><thead><tr><th>Código</th><th>Descripción</th><th class="num">Peso kg</th><th class="num">Largo×ancho×alto m</th><th class="num">Vol. m³</th><th>Confianza</th><th></th></tr></thead><tbody>
-  ${res.map(p => { const x = producto(p[0]); return `<tr><td>${esc(p[0])}</td><td>${esc(x.desc)}</td><td class="num">${fmt(x.peso, 2)}</td><td class="num">${fmt(x.largo, 2)} × ${fmt(x.ancho, 2)} × ${fmt(x.alto, 3)}</td><td class="num">${fmt(x.vol, 4)}</td><td><span class="tag ${x.conf}">${x.conf}</span>${est ? `<div class="muted" style="font-size:11px">${esc(E.prods[p[0]].f)} › ${esc(E.prods[p[0]].s)}${D[p[0]] ? ' · 📍 ' + D[p[0]].join(', ') : ''}</div>` : ''}</td>
+  `<table><thead><tr><th>Código</th><th>Descripción</th><th class="num">Peso kg</th><th>Confianza</th><th></th></tr></thead><tbody>
+  ${res.map(p => { const x = producto(p[0]); return `<tr><td style="white-space:nowrap">${esc(p[0])}</td><td>${badgeOrigen(p)} ${esc(x.desc)}</td><td class="num"><b>${fmt(x.peso, 2)}</b></td><td><span class="tag ${x.conf}">${x.conf}</span>${est ? `<div class="muted" style="font-size:11px">${esc(E.prods[p[0]].f)} › ${esc(E.prods[p[0]].s)}${D[p[0]] ? ' · 📍 ' + D[p[0]].join(', ') : ''}</div>` : ''}</td>
   <td style="white-space:nowrap"><button class="b2" onclick="CALC.push({c:'${esc(p[0])}',q:1});pintarCalc()">+ Agregar al cálculo</button> ${USER.rol === 'admin' ? `<button class="b2" onclick="editarProd('${esc(p[0])}')">Corregir</button>` : ''}</td></tr>`; }).join('')}</tbody></table>`;
 }
 function pintarCalc(){
