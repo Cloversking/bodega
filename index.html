@@ -1531,12 +1531,12 @@ function etqRellenarFotos(){
   if (!etqGeo(ETQ.m, ETQ.w).foto) return;
   ETQ.it.forEach(i => { if (!i.foto){ const f = etqFotoDe(i.c); if (f) i.foto = f; } });
 }
-function etqSave(){ if (!S) return; S.etqCfg = { m: ETQ.m, or: ETQ.or, pa: ETQ.pa, mg: ETQ.mg, sp: ETQ.sp, w: ETQ.w, libre: ETQ.libre }; guardar(); }
+function etqSave(){ if (!S) return; S.etqCfg = { fuente: ETQ.fuente, m: ETQ.m, or: ETQ.or, pa: ETQ.pa, mg: ETQ.mg, sp: ETQ.sp, w: ETQ.w, libre: ETQ.libre }; guardar(); }
 function etqInit(){
   if (ETQ._i) return; ETQ._i = 1;
   if (!document.getElementById('etqFF')){ const st = document.createElement('style'); st.id = 'etqFF'; st.textContent = ETQ_FF; document.head.appendChild(st); }
   const c = S && S.etqCfg;
-  if (c){ ['m', 'or', 'pa', 'mg', 'sp', 'w'].forEach(k => { if (c[k] != null) ETQ[k] = c[k]; }); if (c.libre) Object.assign(ETQ.libre, c.libre); }
+  if (c){ ['fuente', 'm', 'or', 'pa', 'mg', 'sp', 'w'].forEach(k => { if (c[k] != null) ETQ[k] = c[k]; }); if (c.libre) Object.assign(ETQ.libre, c.libre); }
   if (!ETQ_MOD[ETQ.m]) ETQ.m = 'nomastyl';
   if (!ETQ_PAPEL[ETQ.pa]) ETQ.pa = 'carta';
   etqCargarFotos();
@@ -1568,9 +1568,9 @@ function vEtiquetado(){
     : mk === 'metalcon' ? `<div class="row" style="margin-top:10px">${nu('w', 'Ancho de la caja azul (mm)', ETQ.w, 87, 101, 0.5, "etqSet('w',this.value)")}</div>` : '';
   const mod = `<div class="row" style="align-items:center;flex-wrap:wrap;gap:16px"><div class="etqcb" style="position:relative;flex:1;min-width:300px;max-width:460px"><button type="button" class="b2" style="width:100%;text-align:left" onclick="etqCb()">${etqEsc(ETQ_MOD[mk].n)} <span style="color:#94a3b8;font-size:12px">${etqTam(mk)}</span><span style="float:right">▾</span></button>
       <div id="etqCbL" style="display:none;position:absolute;z-index:40;left:0;right:0;top:100%;margin-top:2px;background:#fff;border:1px solid #94a3b8;border-radius:6px;box-shadow:0 6px 18px rgba(0,0,0,.2);max-height:320px;overflow:auto">${ETQ_ORDEN.map(item).join('')}</div></div>
-    <div style="padding:6px;border:1px dashed #cbd5e1;border-radius:6px;background:#fff">${etqMini(mk, 320, 120)}</div></div>${ctl}`;
+    <div style="padding:6px;border:1px dashed #cbd5e1;border-radius:6px;background:#fff">${etqMini(mk, 320, 120)}</div></div>${g.term ? '' : `<div class="row" style="margin-top:10px"><label>Tipo de letra<select onchange="etqFuente(this.value)"><option value="orig" ${ETQ.fuente === 'term' ? '' : 'selected'}>Actual (Tahoma / Arial)</option><option value="term" ${ETQ.fuente === 'term' ? 'selected' : ''}>Nueva (térmica)</option></select></label></div>`}${ctl}`;
   const opt = (v, t, c) => `<option value="${v}" ${c === v ? 'selected' : ''}>${t}</option>`;
-  const hoja = g.pag ? `<div>Cartón de ${g.pag.w} × ${g.pag.h} mm, una etiqueta por hoja. Área imprimible ${g.W} × ${g.H} mm (${g.pag.ox} mm desde la izquierda y ${g.pag.oy} mm desde arriba).</div><div class="muted" style="margin-top:6px">Al imprimir: tamaño 125 × 135, escala 100 %, sin márgenes, bandeja multipropósito, papel grueso.</div>` : `<div class="row" style="align-items:flex-end;flex-wrap:wrap"><label>Tamaño de hoja<select onchange="etqSet('pa',this.value)">${Object.entries(ETQ_PAPEL).map(([k, p]) => opt(k, `${p.n} (${p.w} × ${p.h} mm)`, ETQ.pa)).join('')}</select></label>
+  const hoja = g.pag ? `<div>Cartón de ${g.pag.w} × ${g.pag.h} mm, una etiqueta por hoja. Área imprimible ${g.W} × ${g.H} mm (${g.pag.ox} mm desde la izquierda y ${g.pag.oy} mm desde arriba).</div><div class="muted" style="margin-top:6px">La app envía la página de 125 × 135 mm sin márgenes. Imprime con la impresora configurada para cartón (bandeja multipropósito, papel grueso).</div>` : `<div class="row" style="align-items:flex-end;flex-wrap:wrap"><label>Tamaño de hoja<select onchange="etqSet('pa',this.value)">${Object.entries(ETQ_PAPEL).map(([k, p]) => opt(k, `${p.n} (${p.w} × ${p.h} mm)`, ETQ.pa)).join('')}</select></label>
       <label>Orientación<select onchange="etqSet('or',this.value)">${opt('auto', 'Automática (la que más aprovecha)', ETQ.or)}${opt('L', 'Horizontal', ETQ.or)}${opt('P', 'Vertical', ETQ.or)}</select></label>
       ${nu('mg', 'Margen (mm)', ETQ.mg, 0, 30, 1, "etqSet('mg',this.value)")}${nu('sp', 'Separación (mm)', ETQ.sp, 0, 20, 0.5, "etqSet('sp',this.value)")}</div><div style="margin-top:8px">${etqCapHTML()}</div>`;
   const prod = `<label style="flex-direction:row;align-items:center;gap:6px;color:inherit"><input type="checkbox" ${ETQ.multi ? 'checked' : ''} onchange="etqMulti(this.checked)"> Imprimir más de un producto</label>
@@ -1581,6 +1581,7 @@ function vEtiquetado(){
 }
 document.addEventListener('click', e => { const l = document.getElementById('etqCbL'); if (l && l.style.display === 'block' && !e.target.closest('.etqcb')) l.style.display = 'none'; });
 function etqCb(){ const l = $('#etqCbL'); l.style.display = l.style.display === 'block' ? 'none' : 'block'; }
+function etqFuente(v){ ETQ.fuente = v; etqSave(); etqRe(); }
 function etqModelo(k){ ETQ.m = k; etqRellenarFotos(); etqSave(); etqRe(); }
 function etqSet(k, v){
   if (k === 'mg' || k === 'sp') v = Math.max(0, +v || 0);
