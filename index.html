@@ -1149,6 +1149,10 @@ function famBadge(c){
   const col = (e.famCol && e.famCol[p.f]) || '#6b7280';
   return `<span class="famb" style="border-color:${col};color:#1f2937;background:${col}22" title="${esc(p.f)} › ${esc(p.s)}"><i style="background:${col}"></i>${esc(p.f)} <span style="opacity:.55">›</span> ${esc(p.s)}</span>`;
 }
+function ubicBadges(c, donde){
+  const e = S.estanteria, l = (donde || estDonde())[c] || [];
+  return l.map(id => { const q = e.cant && e.cant[id] && e.cant[id][c]; return `<span class="famb" style="border-color:#1F3864;background:#e8eefb;color:#1F3864" title="Está en el casillero ${id}">📍 ${id}${q != null ? ' · <b>' + q + '</b>' : ''}</span>`; }).join(' ');
+}
 function famBtn(c){ return `<button class="b2" style="padding:1px 6px" title="Asignar o cambiar familia y subfamilia" onclick="event.stopPropagation();estFamAbrir('${esc(c)}')">🏷</button>`; }
 function estFamAbrir(c){
   const e = estInit(), p = e.prods[c];
@@ -1925,7 +1929,7 @@ function vProductos(){
 }
 function buscar(){
   const q = norm($('#q').value).trim(), act = $('#qAct').checked, est = $('#qEst') && $('#qEst').checked;
-  const words = q.split(/\s+/).filter(Boolean), E = est ? estInit() : null, D = est ? estDonde() : null;
+  const words = q.split(/\s+/).filter(Boolean), E = estInit(), D = estDonde();
   let res = [];
   if (words.length || est){
     for (const p of PRODUCTOS){
@@ -1938,7 +1942,7 @@ function buscar(){
   }
   $('#res').innerHTML = !words.length && !est ? '<p class="muted">Escribe para buscar.</p>' : !res.length ? '<p class="muted">Sin resultados.</p>' :
   `<table><thead><tr><th>Código</th><th>Descripción</th><th class="num">Peso kg</th><th>Confianza</th><th></th></tr></thead><tbody>
-  ${res.map(p => { const x = producto(p[0]); return `<tr><td style="white-space:nowrap">${esc(p[0])}</td><td>${badgeOrigen(p)} ${esc(x.desc)}<div style="margin-top:2px">${famBadge(String(p[0]))} ${famBtn(String(p[0]))}</div></td><td class="num"><b>${fmt(x.peso, 2)}</b></td><td><span class="tag ${x.conf}">${x.conf}</span>${est ? `<div class="muted" style="font-size:11px">${esc(E.prods[p[0]].f)} › ${esc(E.prods[p[0]].s)}${D[p[0]] ? ' · 📍 ' + D[p[0]].join(', ') : ''}</div>` : ''}</td>
+  ${res.map(p => { const x = producto(p[0]); return `<tr><td style="white-space:nowrap">${esc(p[0])}</td><td>${badgeOrigen(p)} ${esc(x.desc)}<div style="margin-top:2px">${famBadge(String(p[0]))} ${famBtn(String(p[0]))} ${ubicBadges(String(p[0]), D)}</div></td><td class="num"><b>${fmt(x.peso, 2)}</b></td><td><span class="tag ${x.conf}">${x.conf}</span>${est ? `<div class="muted" style="font-size:11px">${esc(E.prods[p[0]].f)} › ${esc(E.prods[p[0]].s)}${D[p[0]] ? ' · 📍 ' + D[p[0]].join(', ') : ''}</div>` : ''}</td>
   <td style="white-space:nowrap"><button class="b2" onclick="CALC.push({c:'${esc(p[0])}',q:1});pintarCalc()">+ Agregar al cálculo</button> ${USER.rol === 'admin' ? `<button class="b2" onclick="editarProd('${esc(p[0])}')">Corregir</button>` : ''}</td></tr>`; }).join('')}</tbody></table>`;
 }
 function pintarCalc(){
