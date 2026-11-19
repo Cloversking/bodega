@@ -856,7 +856,7 @@ const EST_FILAS = (() => {
 const estKey = id => String(id).replace(/^\d+/, m => m.padStart(2, '0'));
 const EST_HUES = [212, 150, 28, 352, 275, 48, 190, 110, 320, 0, 240, 80];
 let EST_SEL = [], EST_MODO = null, EST_BUS = '', EST_PF = { q: '', f: '', s: '', sin: false }, EST_AF = { q: '', f: '', s: '', sin: true, sig: true }, EST_ACT = null, EST_MOV = null, EST_NF = '', EST_NS = '';
-let EST_OPEN = { lista: false, conf: false };
+let EST_OPEN = { plano: true, busca: true };
 let EST_IMP = { modo: 'familia', color: true, txt: true, leyenda: true, listado: false, alc: 'all2', papel: 'A4', grupos: [], desde: 1, hasta: 30 };
 const oscuro = h => { const v = parseInt(String(h).slice(1), 16); return ((v >> 16) * 299 + ((v >> 8 & 255) * 587) + (v & 255) * 114) / 1000 < 125; };
 const pad2 = v => String(v).padStart(2, '0');
@@ -1271,7 +1271,7 @@ function vEstanteriaHTML(){
       <label style="flex-direction:row;align-items:center;gap:4px;color:inherit;font-size:13px"><input type="checkbox" ${EST_BSOLO ? 'checked' : ''} onchange="EST_BSOLO=this.checked;estBRes()"> Solo los que ya están en la estantería</label></div>
     <div class="muted" id="estBCnt" style="margin:4px 0"></div><div id="estBRes" data-keep="bres" style="max-height:330px;overflow:auto;border:1px solid #e5e7eb;border-radius:6px"></div>`;
   // ---- casillero seleccionado
-  let pDet = `<p class="muted" style="margin:0">Toca un casillero del plano para ver qué tiene (Ctrl o Shift + clic para elegir varios).</p>`;
+  let pDet = '';
   if (EST_SEL.length){
     const c1 = EST_SEL.length === 1 ? cel.find(z => z.id === EST_SEL[0]) : null, selCods = [...new Set(EST_SEL.flatMap(id => e.celdas[id] || []))];
     if (c1){
@@ -1291,16 +1291,15 @@ function vEstanteriaHTML(){
   const pPlano = `<div class="row" style="align-items:center;flex-wrap:wrap"><label class="muted" style="flex-direction:row;align-items:center;gap:6px">Pintar por <select onchange="estModo(this.value)">${[['familia', 'Familia'], ['sub', 'Subfamilia'], ['producto', 'Producto']].map(([v, t]) => `<option value="${v}" ${modo === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
       <input id="estHL" placeholder="🔍 Resaltar producto en el plano" value="${esc(EST_BUS)}" style="flex:1;min-width:200px" onchange="EST_BUS=this.value.trim();vEstanteria()" onkeydown="if(event.key==='Enter'){EST_BUS=this.value.trim();vEstanteria()}">${EST_BUS ? `<button class="b2" onclick="EST_BUS='';vEstanteria()">Ver todo</button>` : ''}</div>
     <div data-keep="plano" style="overflow-x:auto;border:1px solid #ccc;border-radius:6px;background:#fafafa;padding:4px;margin-top:6px">${estSVG(1, totalCol, { modo, color: true })}</div>
-    <div id="estDet" style="margin-top:8px;border:2px solid #1F3864;border-radius:8px;padding:10px;background:#f8faff">${pDet}</div>
-    ${asign.length ? `<div data-keep="ley" style="display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;margin-top:8px;max-height:110px;overflow:auto">${estLeyenda(e, modo, asign, false)}</div>` : ''}
+    ${pDet ? `<div id="estDet" style="margin-top:8px;border:2px solid #1F3864;border-radius:8px;padding:10px;background:#f8faff">${pDet}</div>` : ''}
     ${huerf.length ? `<p class="warn">Hay casilleros con productos que ya no están marcados (${[...new Set(huerf)].join(', ')}).</p>` : ''}`;
   const kp = (t, v, x) => `<div class="card" style="margin:0;padding:6px 12px"><div class="muted">${t}</div><b style="font-size:18px">${v}</b>${x || ''}</div>`;
   $('#main').innerHTML = `<div class="row noprint" style="margin-bottom:8px;gap:6px;align-items:center;flex-wrap:wrap"><span style="font-weight:bold;color:var(--az);font-size:18px;flex:1">🗄 Estantería</span>
       ${kp('Productos ubicados', ubic)}${kp('Casilleros usados / libres', `${usadas} / ${cel.length - usadas}`, ` <span class="muted">(${totalCol} col · ${(largo / 100).toFixed(2).replace('.', ',')} m)</span>`)}
       <button class="b2" onclick="estModalEtq(false)">🏷 Etiquetas</button><button class="b2" onclick="estConfAbrir()">⚙ Colores y medidas</button><button class="b2" onclick="estLimpiar()">🧹 Limpiar</button><button class="b" onclick="estDlgImprimir()">🖨 Imprimir</button></div>
     <div id="estImpBox"></div>
-    <div class="card"><h3 style="margin:0 0 8px;color:var(--az)">🗺 Estantería</h3>${pPlano}</div>
-    <div class="card"><h3 style="margin:0 0 8px;color:var(--az)">🔎 Buscador de productos</h3>${pBusca}</div>
+    ${panel('plano', '🗺 Estantería', pPlano)}
+    ${panel('busca', '🔎 Buscador de productos', pBusca)}
     ${aviso ? `<div style="position:fixed;bottom:14px;left:50%;transform:translateX(-50%);z-index:50;max-width:92vw;box-shadow:0 4px 14px #0004;background:#fff3c4;border:2px solid #d4a017;border-radius:8px;padding:8px 12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">${aviso}</div>` : ''}`;
   estBRes(); if ($('#estConf')) estConfRender();
 }
