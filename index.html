@@ -1478,11 +1478,11 @@ function etqTerm(it){
   if (cod){
     const b = etqC128(cod), mw = Math.min(25.4 / 75, (AW - 2 * X) / b.n); let x = 0, d = '';
     b.w.forEach((w, i) => { if (i % 2 === 0) d += `M${x} 0h${w}v1h${-w}z`; x += w; });
-    h += `<svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;left:${X}mm;top:14.5mm" width="${(b.n * mw).toFixed(3)}mm" height="12mm" viewBox="0 0 ${b.n} 1" preserveAspectRatio="none" shape-rendering="crispEdges"><path d="${d}" fill="#000"/></svg>` + txt('COD ' + up(cod), X, 34, 5.5, 3.14, 1);
+    h += `<svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;left:${X}mm;top:69.5mm" width="${(b.n * mw).toFixed(3)}mm" height="14mm" viewBox="0 0 ${b.n} 1" preserveAspectRatio="none" shape-rendering="crispEdges"><path d="${d}" fill="#000"/></svg>` ; h += txt('COD ' + up(cod), X, 27.3, 7.8, 4.45, 1);
   }
   let sc = .62, L = [];
-  for (const q of [1, .88, .78, .7, .62]){ sc = q; L = wrap(desc, Math.floor((AW - 2 * X) / (2.59 * q))); if (40.6 + 6.1 * q + (L.length - 1) * 7.6 * q <= 83.5) break; }
-  L.forEach((t, i) => { h += txt(t, X, 40.6 + 6.1 * sc + i * 7.6 * sc, 6.1 * sc, 2.59 * sc); });
+  for (const q of [1, .88, .78, .7, .62]){ sc = q; L = wrap(desc, Math.floor((AW - 2 * X) / (2.59 * q))); if (34.9 + 6.1 * q + (L.length - 1) * 7.6 * q <= 67) break; }
+  L.forEach((t, i) => { h += txt(t, X, 34.9 + 6.1 * sc + i * 7.6 * sc, 6.1 * sc, 2.59 * sc); });
   return h + '</div>';
 }
 function etqCap(mk, or, pa){
