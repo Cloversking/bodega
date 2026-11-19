@@ -851,13 +851,13 @@ const EST_TRAMOS_DEF = [
 const EST_FILAS = (() => {
   const F = (...sub) => ['A', 'B', 'C', 'D', 'E', 'F'].map((l, i) => ({ l, ls: [l], sub: sub[i] }));
   const g6 = F(1, 2, 2, 2, 2, 1); g6.splice(2, 2, { l: 'C', ls: ['C', 'D'], sub: 2 });
-  return { G1: F(1, 1, 1, 1, 1, 1), G2: F(1, 2, 2, 2, 2, 1), G3: F(4, 4, 4, 4, 4, 1), G4: F(1, 2, 2, 2, 2, 2), G5: F(1, 2, 2, 2, 2, 1), G6: g6 };
+  return { G1: F(1, 1, 1, 1, 1, 1), G2: F(1, 2, 2, 2, 2, 1), G3: F(4, 4, 4, 4, 4, 2), G4: F(1, 2, 2, 2, 2, 2), G5: F(1, 2, 2, 2, 2, 1), G6: g6 };
 })();
 const estKey = id => String(id).replace(/^\d+/, m => m.padStart(2, '0'));
 const EST_HUES = [212, 150, 28, 352, 275, 48, 190, 110, 320, 0, 240, 80];
 let EST_SEL = [], EST_MODO = null, EST_BUS = '', EST_PF = { q: '', f: '', s: '', sin: false }, EST_AF = { q: '', f: '', s: '', sin: true, sig: true }, EST_ACT = null, EST_MOV = null, EST_NF = '', EST_NS = '';
 let EST_OPEN = { plano: true, agregar: true, det: true, lista: false, conf: false };
-let EST_IMP = { modo: 'familia', color: true, txt: true, leyenda: true, listado: false };
+let EST_IMP = { modo: 'familia', color: true, txt: true, leyenda: true, listado: false, alc: 'all2', papel: 'A4', grupos: [], desde: 1, hasta: 30 };
 const oscuro = h => { const v = parseInt(String(h).slice(1), 16); return ((v >> 16) * 299 + ((v >> 8 & 255) * 587) + (v & 255) * 114) / 1000 < 125; };
 const pad2 = v => String(v).padStart(2, '0');
 function hsl2hex(h, s, l){ s /= 100; l /= 100; const k = n => (n + h / 30) % 12, a = s * Math.min(l, 1 - l), f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1))); return '#' + [f(0), f(8), f(4)].map(x => Math.round(x * 255).toString(16).padStart(2, '0')).join(''); }
@@ -916,11 +916,11 @@ function estGrupo(c, modo){ // devuelve [clave, color, texto corto, texto largo]
 }
 /* Dibujo de frente. Ancho a escala; alto dibujado más alto para que se lean las etiquetas. */
 function estSVG(desde, hasta, o){
-  const e = estInit(), cel = estCeldas(), SX = 1.3, K = o.imp ? 1.95 : 2.5, top = 30, izq = 52, modo = o.modo, bn = !o.color;
+  const e = estInit(), cel = estCeldas(), SX = 1.3, K0 = o.imp ? 1.95 : 2.5, top = 30, izq = 52, modo = o.modo, bn = !o.color;
   const cs = cel.filter(c => c.col >= desde && c.col <= hasta);
   const x0 = Math.min(...cs.map(c => c.x)), x1 = Math.max(...cs.map(c => c.x + c.w));
   const H = Math.max(...e.tramos.map(t => t.niveles.reduce((a, b) => a + b, 0)));
-  const W = izq + (x1 - x0) * SX + 10, alto = top + H * K + 34;
+  const W = izq + (x1 - x0) * SX + 10, K = o.imp && o.pw ? Math.max(K0, Math.min(5.5, ((o.h / o.pw) * W - top - 34) / H)) : K0, alto = top + H * K + 34;
   const Y = cm => top + (H - cm) * K, X = cm => izq + (cm - x0) * SX;
   let s = `<svg viewBox="0 0 ${W} ${alto}" ${o.imp ? `style="width:100%;height:${o.h || 86}mm;display:block" preserveAspectRatio="xMidYMin meet"` : `width="${W}" height="${alto}"`} xmlns="http://www.w3.org/2000/svg" font-family="Arial,sans-serif">`;
   let col = 0, xc = 0, labN = false;
@@ -1318,33 +1318,56 @@ function etqImprimir(){
 }
 function estDlgImprimir(){
   const b = $('#estImpBox'); if (b.innerHTML){ b.innerHTML = ''; return; }
+  const e = estInit(), I = Object.assign({ alc: 'all2', papel: 'A4', grupos: [], desde: 1, hasta: 30 }, EST_IMP), tot = e.tramos.reduce((a, t) => a + t.cols, 0);
   const ck = (id, v, t) => `<label style="flex-direction:row;align-items:center;gap:4px;color:inherit;font-size:13px"><input type="checkbox" id="${id}" ${v ? 'checked' : ''}> ${t}</label>`;
-  b.innerHTML = `<div class="card" style="background:#f8faff"><div class="row" style="align-items:flex-end">
+  const opt = (v, t, cur) => `<option value="${v}" ${cur === v ? 'selected' : ''}>${t}</option>`;
+  let c0 = 0; const gtxt = e.tramos.map(t => { const a = c0 + 1; c0 += t.cols; return { id: t.id, t: `${t.nombre} (col. ${a}${t.cols > 1 ? '–' + c0 : ''})` }; });
+  b.innerHTML = `<div class="card" style="background:#f8faff"><div class="row" style="align-items:flex-end;flex-wrap:wrap">
+    <label>Qué imprimir<select id="eiA">${opt('all1', 'Toda la estantería en 1 hoja', I.alc)}${opt('all2', 'Toda la estantería en 2 hojas', I.alc)}${opt('all3', 'Toda la estantería en 3 hojas', I.alc)}${opt('grp', 'Una hoja por cada grupo (todos)', I.alc)}${opt('sel', 'Solo los grupos que marque abajo (una hoja por grupo)', I.alc)}${opt('rango', 'Un rango de columnas en 1 hoja', I.alc)}</select></label>
+    <label>Papel<select id="eiP">${opt('A4', 'A4 horizontal', I.papel)}${opt('A3', 'A3 horizontal (más grande, letra más legible)', I.papel)}</select></label>
     <label>Pintar por<select id="eiM">${[['familia', 'Familia'], ['sub', 'Subfamilia'], ['producto', 'Producto']].map(([v, t]) => `<option value="${v}" ${(EST_IMP.modo || S.estanteria.modo) === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
-    <label>Impresión<select id="eiC"><option value="1" ${EST_IMP.color ? 'selected' : ''}>A color</option><option value="0" ${EST_IMP.color ? '' : 'selected'}>Blanco y negro</option></select></label>
-    ${ck('eiT', EST_IMP.txt !== false, 'Escribir el contenido en cada casillero')}
-    ${ck('eiY', EST_IMP.leyenda !== false, 'Leyenda bajo cada parte')}
-    ${ck('eiL', EST_IMP.listado, 'Hoja con el contenido de cada casillero (listado)')}
-    <button class="b" onclick="EST_IMP={modo:$('#eiM').value,color:$('#eiC').value==='1',txt:$('#eiT').checked,leyenda:$('#eiY').checked,listado:$('#eiL').checked};imprimirEstanteria(EST_IMP)">🖨 Imprimir</button></div>
-    <p class="muted" style="margin:6px 0 0">Se imprime en 2 hojas horizontales: columnas 1–16 en la primera y 17–31 en la segunda. La leyenda de cada hoja muestra solo lo que hay en esa parte. En blanco y negro conviene dejar marcado "Escribir el contenido en cada casillero".</p></div>`;
+    <label>Impresión<select id="eiC"><option value="1" ${EST_IMP.color ? 'selected' : ''}>A color</option><option value="0" ${EST_IMP.color ? '' : 'selected'}>Blanco y negro</option></select></label></div>
+    <div class="row" style="margin-top:6px;flex-wrap:wrap"><span class="muted">Grupos:</span>${gtxt.map(g => ck('eiG_' + g.id, I.grupos.includes(g.id), g.t)).join('')}</div>
+    <div class="row" style="margin-top:6px;align-items:center"><span class="muted">Rango:</span> columna <input type="number" id="eiD" min="1" max="${tot}" value="${I.desde}" style="width:64px"> a <input type="number" id="eiH" min="1" max="${tot}" value="${I.hasta}" style="width:64px"></div>
+    <div class="row" style="margin-top:6px;flex-wrap:wrap">${ck('eiT', EST_IMP.txt !== false, 'Escribir el contenido en cada casillero')}${ck('eiY', EST_IMP.leyenda !== false, 'Leyenda bajo cada hoja')}${ck('eiL', EST_IMP.listado, 'Hoja extra con el contenido de cada casillero (listado)')}
+    <button class="b" onclick="EST_IMP={modo:$('#eiM').value,color:$('#eiC').value==='1',txt:$('#eiT').checked,leyenda:$('#eiY').checked,listado:$('#eiL').checked,alc:$('#eiA').value,papel:$('#eiP').value,grupos:S.estanteria.tramos.map(t=>t.id).filter(g=>$('#eiG_'+g).checked),desde:+$('#eiD').value||1,hasta:+$('#eiH').value||${tot}};imprimirEstanteria(EST_IMP)">🖨 Imprimir</button></div>
+    <p class="muted" style="margin:6px 0 0">Los cortes entre hojas se hacen entre grupos, nunca por la mitad de uno. Los grupos marcados solo se usan con "Solo los grupos que marque"; el rango solo con "Un rango de columnas". En 1 hoja los 30 grupos de columnas quedan muy chicos: conviene A3. La leyenda de cada hoja muestra solo lo que hay en esa parte. En blanco y negro conviene dejar marcado "Escribir el contenido en cada casillero".</p></div>`;
+}
+function estPartes(o){
+  const e = estInit(); let c = 0; const gr = e.tramos.map(t => { const a = c + 1; c += t.cols; return { id: t.id, nombre: t.nombre, a, b: c }; });
+  const nom = l => l.length === 1 ? l[0].nombre : `${l[0].nombre} a ${l[l.length - 1].nombre}`, pk = l => [l[0].a, l[l.length - 1].b, nom(l)];
+  const split = N => { // cortes entre grupos que minimizan la hoja más grande y después reparten parejo
+    N = Math.min(N, gr.length); let best = null;
+    const rec = (ini, k, cuts) => {
+      if (k === 0){ const ch = []; let p = 0; cuts.concat(gr.length).forEach(q => { ch.push(gr.slice(p, q)); p = q; }); const sz = ch.map(l => l[l.length - 1].b - l[0].a + 1), mx = Math.max(...sz), sq = sz.reduce((a, z) => a + z * z, 0); if (!best || mx < best.mx || (mx === best.mx && sq < best.sq)) best = { ch, mx, sq }; return; }
+      for (let q = ini; q <= gr.length - k; q++) rec(q + 1, k - 1, cuts.concat(q));
+    };
+    rec(1, N - 1, []); return best.ch.map(pk);
+  };
+  if (o.alc === 'all1') return [pk(gr)];
+  if (o.alc === 'all3') return split(3);
+  if (o.alc === 'grp') return gr.map(g => pk([g]));
+  if (o.alc === 'sel') return gr.filter(g => (o.grupos || []).includes(g.id)).map(g => pk([g]));
+  if (o.alc === 'rango'){ const tot = gr[gr.length - 1].b, a = Math.max(1, Math.min(o.desde || 1, tot)), b = Math.max(a, Math.min(o.hasta || tot, tot)); return [[a, b, `columnas ${a} a ${b}`]]; }
+  return split(2);
 }
 function imprimirEstanteria(o){
-  const e = estInit(), cel = estCeldas(), totalCol = e.tramos.reduce((a, t) => a + t.cols, 0), mitad = Math.ceil(totalCol / 2);
+  const e = estInit(), cel = estCeldas(), partes = estPartes(o), A3 = o.papel === 'A3', K = A3 ? 1.5 : 1;
+  if (!partes.length) return toast('Marca al menos un grupo para imprimir');
   const bus = EST_BUS; EST_BUS = '';
-  const partes = [[1, mitad], [mitad + 1, totalCol]];
   const tit = { familia: 'por familia', sub: 'por subfamilia', producto: 'por producto' }[o.modo];
   const fecha = new Date().toLocaleDateString('es-CL');
-  const css = `<style>@page{size:A4 landscape;margin:7mm} body{margin:0} *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  const css = `<style>@page{size:${A3 ? 'A3' : 'A4'} landscape;margin:7mm} body{margin:0} *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .hoja{page-break-after:always;break-after:page}.hoja:last-child{page-break-after:auto;break-after:auto}
     .ley{column-count:${o.modo === 'producto' ? 5 : 3};column-gap:10px;font-size:${o.modo === 'producto' ? 7 : 10}px;line-height:1.15;margin-top:3px} .ley span{display:block;break-inside:avoid;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .ley span span{display:inline-block!important;width:${o.modo === 'producto' ? 7 : 10}px!important;height:${o.modo === 'producto' ? 7 : 10}px!important;vertical-align:0!important}
     .lst{font-size:9.5px} .lst td,.lst th{padding:1px 4px} .cc{column-count:2;column-gap:14px} .cc tr{break-inside:avoid}</style>`;
   let cuerpo = '';
-  partes.forEach(([a, b], i) => {
+  partes.forEach(([a, b, lab], i) => {
     const cods = [...new Set(cel.filter(c => c.col >= a && c.col <= b).flatMap(c => e.celdas[c.id] || []))].filter(c => e.prods[c]);
     const nLey = o.modo === 'producto' ? Math.ceil(cods.length / 5) : Math.ceil(new Set(cods.map(c => o.modo === 'sub' ? subKey(e.prods[c].f, e.prods[c].s) : e.prods[c].f)).size / 3);
-    const h = o.leyenda ? Math.max(78, 172 - nLey * (o.modo === 'producto' ? 2.85 : 4.4)) : 178;
-    cuerpo += `<div class="hoja"><div style="display:flex;justify-content:space-between;align-items:baseline"><h1 style="font-size:15px;margin:0">Estantería ${tit} — parte ${i + 1} de 2 (columnas ${a}–${b})</h1><span style="font-size:10px">${fecha} · casillero = columna + nivel (A arriba … F piso) + parte</span></div>
-      ${estSVG(a, b, Object.assign({ imp: true, h }, o))}
+    const h = (o.leyenda ? Math.max(78, 172 - nLey * (o.modo === 'producto' ? 2.85 : 4.4)) : 178) * K * (A3 ? 1.04 : 1);
+    cuerpo += `<div class="hoja"><div style="display:flex;justify-content:space-between;align-items:baseline"><h1 style="font-size:15px;margin:0">Estantería ${tit} — hoja ${i + 1} de ${partes.length} · ${lab} (columnas ${a}–${b})</h1><span style="font-size:10px">${fecha} · casillero = columna + nivel (A arriba … F piso) + parte</span></div>
+      ${estSVG(a, b, Object.assign({ imp: true, h, pw: A3 ? 406 : 283 }, o))}
       ${o.leyenda && cods.length ? `<div class="ley">${estLeyenda(e, o.modo, cods, !o.color)}</div>` : ''}</div>`;
   });
   EST_BUS = bus;
