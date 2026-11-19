@@ -856,7 +856,7 @@ const EST_FILAS = (() => {
 const estKey = id => String(id).replace(/^\d+/, m => m.padStart(2, '0'));
 const EST_HUES = [212, 150, 28, 352, 275, 48, 190, 110, 320, 0, 240, 80];
 let EST_SEL = [], EST_MODO = null, EST_BUS = '', EST_PF = { q: '', f: '', s: '', sin: false }, EST_AF = { q: '', f: '', s: '', sin: true, sig: true }, EST_ACT = null, EST_MOV = null, EST_NF = '', EST_NS = '';
-let EST_OPEN = { plano: true, agregar: true, det: true, lista: false, conf: false };
+let EST_OPEN = { lista: false, conf: false };
 let EST_IMP = { modo: 'familia', color: true, txt: true, leyenda: true, listado: false, alc: 'all2', papel: 'A4', grupos: [], desde: 1, hasta: 30 };
 const oscuro = h => { const v = parseInt(String(h).slice(1), 16); return ((v >> 16) * 299 + ((v >> 8 & 255) * 587) + (v & 255) * 114) / 1000 < 125; };
 const pad2 = v => String(v).padStart(2, '0');
@@ -882,7 +882,7 @@ function estInit(){
   if (e.version !== 3 && e.version !== 4){ Object.keys(e).forEach(k => delete e[k]); e.version = 3; }
   if (e.version === 3){ e.celdas = {}; delete e.tramos; e.version = 4; } // distribución nueva: se parte sin materiales asignados
   if (!e.tramos) e.tramos = JSON.parse(JSON.stringify(EST_TRAMOS_DEF));
-  e.famCol = e.famCol || {}; e.subCol = e.subCol || {}; e.famAb = e.famAb || {}; e.subAb = e.subAb || {}; e.celdas = e.celdas || {};
+  e.cant = e.cant || {}; e.famCol = e.famCol || {}; e.subCol = e.subCol || {}; e.famAb = e.famAb || {}; e.subAb = e.subAb || {}; e.celdas = e.celdas || {};
   if (!e.prods){ e.prods = {}; EST_DEF.forEach(([c, f, s, lab], i) => { if (!e.prods[c]) e.prods[c] = { f, s, lab, n: i + 1 }; }); e.sigN = EST_DEF.length + 1; }
   e.modo = e.modo || 'familia';
   estColores(e, false);
@@ -916,7 +916,7 @@ function estGrupo(c, modo){ // devuelve [clave, color, texto corto, texto largo]
 }
 /* Dibujo de frente. Ancho a escala; alto dibujado más alto para que se lean las etiquetas. */
 function estSVG(desde, hasta, o){
-  const e = estInit(), cel = estCeldas(), SX = 1.3, K0 = o.imp ? 1.95 : 2.5, top = 30, izq = 52, modo = o.modo, bn = !o.color;
+  const e = estInit(), cel = estCeldas(), SX = 1.3, K0 = o.imp ? 1.95 : 1.9, top = 30, izq = 52, modo = o.modo, bn = !o.color;
   const cs = cel.filter(c => c.col >= desde && c.col <= hasta);
   const x0 = Math.min(...cs.map(c => c.x)), x1 = Math.max(...cs.map(c => c.x + c.w));
   const H = Math.max(...e.tramos.map(t => t.niveles.reduce((a, b) => a + b, 0)));
@@ -957,7 +957,7 @@ function estSVG(desde, hasta, o){
       px += w;
     });
     s += `<text x="${cx + cw - 2}" y="${cy + 9}" font-size="7.5" text-anchor="end" fill="${l.length && !bn ? '#000' : '#777'}" pointer-events="none" ${l.length && !bn ? 'paint-order="stroke" stroke="#fff" stroke-width="2"' : ''}>${c.id}</text>`;
-    if (!o.imp) s += `<rect x="${cx}" y="${cy}" width="${cw}" height="${ch}" fill="transparent" stroke="${sel ? '#e00' : 'none'}" stroke-width="3.5" onclick="estClic(event,'${c.id}')" style="cursor:pointer"><title>${c.id} · ${c.w}×${c.h} cm${l.length ? '\n' + l.map(cod => `#${(e.prods[cod] || {}).n || '?'} ${cod} ${estDesc(cod)}`).join('\n') : ' · vacío'}</title></rect>`;
+    if (!o.imp) s += `<rect x="${cx}" y="${cy}" width="${cw}" height="${ch}" fill="transparent" stroke="${sel ? '#e00' : 'none'}" stroke-width="3.5" onclick="estClic(event,'${c.id}')" style="cursor:pointer"><title>${c.id} · ${c.w}×${c.h} cm${l.length ? '\n' + l.map(cod => `#${(e.prods[cod] || {}).n || '?'} ${cod} ${estDesc(cod)}${(e.cant[c.id] || {})[cod] != null ? ' · cant. ' + e.cant[c.id][cod] : ''}`).join('\n') : ' · vacío'}</title></rect>`;
   });
   s += `<line x1="${izq - 4}" y1="${Y(0)}" x2="${W - 4}" y2="${Y(0)}" stroke="#000" stroke-width="2"/>`;
   [...new Set(cs.map(c => c.col))].forEach(cn => { const c = cs.find(z => z.col === cn); s += `<text x="${X(c.x + c.w / 2)}" y="${Y(0) + 14}" font-size="11" text-anchor="middle" font-weight="bold">${cn}</text>`; });
@@ -970,7 +970,8 @@ function estClic(ev, id){
   if (EST_ACT && !mod){ estUbicar(EST_ACT, id); return; }
   if (mod){ EST_SEL = EST_SEL.includes(id) ? EST_SEL.filter(x => x !== id) : EST_SEL.concat(id); }
   else EST_SEL = (EST_SEL.length === 1 && EST_SEL[0] === id) ? [] : [id];
-  EST_OPEN.det = true; vEstanteria();
+  vEstanteria();
+  if (EST_SEL.length) setTimeout(() => { const d = $('#estDet'); if (d){ const r = d.getBoundingClientRect(); if (r.top > innerHeight - 160) d.scrollIntoView({ block: 'center', behavior: 'smooth' }); } }, 60);
 }
 function estUbicar(c, id){ // modo "ubicar": el producto activo se pone en el casillero tocado
   const e = S.estanteria, l = e.celdas[id] = e.celdas[id] || [];
@@ -989,23 +990,24 @@ function estMoverA(id){
   if (id === desde){ EST_MOV = null; vEstanteria(); return; }
   const l = e.celdas[id] = e.celdas[id] || [];
   if (!l.includes(c)) l.push(c);
-  e.celdas[desde] = (e.celdas[desde] || []).filter(x => x !== c); if (!e.celdas[desde].length) delete e.celdas[desde];
+  const q0 = (e.cant[desde] || {})[c]; estQuitar(desde, c); if (q0 != null){ e.cant[id] = e.cant[id] || {}; e.cant[id][c] = (e.cant[id][c] || 0) + q0; }
   EST_MOV = null; if (EST_SEL.length === 1 && EST_SEL[0] === desde) EST_SEL = [id];
   guardar(); toast(`Movido de ${desde} a ${id}`); vEstanteria();
 }
 function estLimpiar(){
   const e = S.estanteria, n = Object.keys(e.celdas).length; if (!n) return toast('La estantería ya está vacía');
   if (!confirm(`¿Limpiar toda la estantería?\nSe sacan los productos de los ${n} casilleros usados. Los productos siguen marcados para la estantería.`)) return;
-  e.celdas = {}; EST_SEL = []; EST_ACT = EST_MOV = null; guardar(); vEstanteria(); toast('Estantería limpia');
+  e.celdas = {}; e.cant = {}; EST_SEL = []; EST_ACT = EST_MOV = null; guardar(); vEstanteria(); toast('Estantería limpia');
 }
 function estAsignar(c){
   const e = S.estanteria; if (!EST_SEL.length) return toast('Primero toca un casillero');
   EST_SEL.forEach(id => { const l = e.celdas[id] = e.celdas[id] || []; if (!l.includes(c)) l.push(c); });
   guardar(); toast(`#${e.prods[c].n} puesto en ${EST_SEL.join(', ')}`); vEstanteria();
 }
-function estDesasignar(id, c){ const e = S.estanteria; e.celdas[id] = (e.celdas[id] || []).filter(x => x !== c); if (!e.celdas[id].length) delete e.celdas[id]; if (EST_MOV && EST_MOV.c === c) EST_MOV = null; guardar(); toast(`Sacado de ${id}`); vEstanteria(); }
+function estQuitar(id, c){ const e = S.estanteria; e.celdas[id] = (e.celdas[id] || []).filter(x => x !== c); if (!e.celdas[id].length) delete e.celdas[id]; if (e.cant[id]){ delete e.cant[id][c]; if (!Object.keys(e.cant[id]).length) delete e.cant[id]; } }
+function estDesasignar(id, c){ const e = S.estanteria; estQuitar(id, c); if (EST_MOV && EST_MOV.c === c) EST_MOV = null; guardar(); toast(`Sacado de ${id}`); vEstanteria(); }
 function estMoverEnCelda(id, i, d){ const l = S.estanteria.celdas[id], j = i + d; if (!l || j < 0 || j >= l.length) return; [l[i], l[j]] = [l[j], l[i]]; guardar(); vEstanteria(); }
-function estVaciar(){ if (!confirm(`¿Vaciar ${EST_SEL.length === 1 ? 'el casillero ' + EST_SEL[0] : EST_SEL.length + ' casilleros'}?`)) return; EST_SEL.forEach(id => delete S.estanteria.celdas[id]); guardar(); vEstanteria(); }
+function estVaciar(){ if (!confirm(`¿Vaciar ${EST_SEL.length === 1 ? 'el casillero ' + EST_SEL[0] : EST_SEL.length + ' casilleros'}?`)) return; EST_SEL.forEach(id => { delete S.estanteria.celdas[id]; delete S.estanteria.cant[id]; }); guardar(); vEstanteria(); }
 function estModo(m){ S.estanteria.modo = m; guardar(); vEstanteria(); }
 /* familia / subfamilia: lista desplegable con opción "Nueva…" */
 function estNuevo(tipo, f){ const v = prompt(tipo === 'f' ? 'Nombre de la nueva familia:' : `Nueva subfamilia${f ? ' de ' + f : ''}:`); return v && v.trim() ? v.trim() : null; }
@@ -1074,13 +1076,13 @@ function estMMarcar(c){
 function estMDesmarcar(c){
   const e = S.estanteria, d = estDonde()[c];
   if (d && !confirm(`${c} está ubicado en ${d.join(', ')}. ¿Quitarlo igual de la estantería?`)) return;
-  delete e.prods[c]; Object.keys(e.celdas).forEach(id => { e.celdas[id] = e.celdas[id].filter(x => x !== c); if (!e.celdas[id].length) delete e.celdas[id]; });
+  delete e.prods[c]; Object.keys(e.celdas).forEach(id => estQuitar(id, c));
   guardar(); estModalRes();
 }
 function estDesmarcar(c){
   const e = S.estanteria, d = estDonde()[c];
   if (!confirm(`¿Quitar ${c} de la estantería?${d ? `\nTambién se saca de ${d.join(', ')}.` : ''}`)) return;
-  delete e.prods[c]; Object.keys(e.celdas).forEach(id => { e.celdas[id] = e.celdas[id].filter(x => x !== c); if (!e.celdas[id].length) delete e.celdas[id]; });
+  delete e.prods[c]; Object.keys(e.celdas).forEach(id => estQuitar(id, c));
   guardar(); vEstanteria();
 }
 function estColorEdit(tipo, k, v){ const e = S.estanteria; if (tipo === 'f') e.famCol[k] = v; else if (tipo === 's') e.subCol[k] = v; else if (tipo === 'fa') e.famAb[k] = v.trim() || abrev(k); else if (tipo === 'sa') e.subAb[k] = v.trim(); guardar(); vEstanteria(); }
@@ -1127,99 +1129,181 @@ function vEstanteria(){
   vEstanteriaHTML();
   document.querySelectorAll('#main [data-keep]').forEach(el => { const v = pos.z[el.dataset.keep]; if (v){ el.scrollLeft = v[0]; el.scrollTop = v[1]; } });
   window.scrollTo(0, pos.y);
+  if (fq === 'estBQ'){ const i = $('#estBQ'); if (i){ i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }
   if (fq === 'estAQ'){ const i = $('#estAQ'); if (i){ i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }
+}
+/* ---- Buscador de la base, modal "ubicar" y mini estantería ---- */
+let EST_BQ = '', EST_BSOLO = false, EST_UB = null;
+const estQtxt = q => q == null ? '' : ' · <b>' + q + '</b>';
+function estChips(c, donde){ const e = S.estanteria; return (donde[c] || []).map(id => `<span style="display:inline-flex;align-items:center;gap:2px;border:1px solid #bbb;border-radius:12px;padding:0 2px 0 7px;margin:1px;background:#fff;white-space:nowrap">📍${id}${estQtxt((e.cant[id] || {})[c])}<button class="bx" title="Mover a otro casillero" onclick="event.stopPropagation();estMover('${esc(c)}','${id}')">↔</button><button class="bx" title="Sacar de ${id}" onclick="event.stopPropagation();estDesasignar('${id}','${esc(c)}')">✕</button></span>`).join(''); }
+function estTotalProd(c){ const e = S.estanteria; let t = 0, hay = false; Object.keys(e.celdas).forEach(id => { if ((e.celdas[id] || []).includes(c)){ const q = (e.cant[id] || {})[c]; if (q != null){ t += q; hay = true; } } }); return hay ? t : null; }
+function estBRes(){
+  const box = $('#estBRes'); if (!box) return; const e = S.estanteria, donde = estDonde(), ws = norm(EST_BQ).split(/\s+/).filter(Boolean);
+  let r = [], lleno = false;
+  if (ws.length && norm(EST_BQ).replace(/\s/g, '').length >= 2){ for (const p of PRODUCTOS){ const c = String(p[0]); if (EST_BSOLO && !donde[c]) continue; if (ws.every(w => hayP(p).includes(w))){ r.push(p); if (r.length >= 80){ lleno = true; break; } } } }
+  else if (EST_BSOLO){ r = Object.keys(donde).map(c => PROD_MAP[c]).filter(Boolean).slice(0, 80); }
+  else { box.innerHTML = `<p class="muted" style="margin:8px 4px">Escribe código o palabras (ej: <i>cemento</i>, <i>perfil 50x50</i>, <i>70511</i>). Doble clic en un producto para ubicarlo.</p>`; $('#estBCnt').textContent = `${PRODUCTOS.length} productos en la base`; return; }
+  $('#estBCnt').textContent = lleno ? 'Más de 80 resultados: agrega palabras para acotar' : r.length + ' resultado(s)';
+  box.innerHTML = r.length ? `<table><thead><tr><th>Código</th><th>Producto</th><th>Dónde está (casillero · cantidad)</th><th></th></tr></thead><tbody>${r.map(p => { const c = String(p[0]), t = estTotalProd(c);
+    return `<tr ondblclick="estUbAbrir('${esc(c)}')" style="cursor:pointer" title="Doble clic para ubicar en un casillero"><td style="white-space:nowrap"><b>${esc(c)}</b></td><td>${esc(p[1])}</td><td>${estChips(c, donde) || '<span class="muted">sin ubicar</span>'}${t != null ? ` <span class="muted">· total <b>${t}</b></span>` : ''}</td><td style="white-space:nowrap"><button class="b" onclick="estUbAbrir('${esc(c)}')">📍 Ubicar</button></td></tr>`; }).join('')}</tbody></table>` : '<p class="muted" style="margin:8px 4px">Sin resultados.</p>';
+}
+function estMiniHTML(tid, selId, cod){
+  const e = estInit(), cel = estCeldas().filter(c => c.t === tid), t = e.tramos.find(x => x.id === tid); if (!t || !cel.length) return '';
+  const nb = t.cols, first = Math.min(...cel.map(c => c.col)), LI = { A: 0, B: 1, C: 2, D: 3, E: 4, F: 5 };
+  let h = `<div style="display:grid;grid-template-columns:repeat(${nb * 4},minmax(26px,1fr));grid-template-rows:auto repeat(6,40px);gap:2px;min-width:${Math.max(nb * 4 * 28, 260)}px">`;
+  for (let b = 0; b < nb; b++) h += `<div style="grid-column:${b * 4 + 1}/span 4;grid-row:1;text-align:center;font-weight:bold;font-size:12px;background:${t.color};border:1px solid #bbb;border-radius:3px;padding:1px">col ${first + b}</div>`;
+  cel.forEach(c => {
+    const u = 4 / c.nsub, gc = (c.col - first) * 4 + (c.sub - 1) * u + 1, l = e.celdas[c.id] || [], tiene = cod && l.includes(cod);
+    const bg = tiene ? '#fde68a' : l.length ? '#bbf7d0' : '#f3f4f6';
+    h += `<button type="button" data-cid="${c.id}" onclick="estUbSel('${c.id}')" ondblclick="estUbSel('${c.id}');estUbPoner()" title="${c.id}${l.length ? ' · ' + l.length + ' producto(s): ' + esc(l.map(x => x + ' ' + estDesc(x)).join(' | ')) : ' · vacío'}" style="grid-column:${gc}/span ${u};grid-row:${LI[c.letra] + 2}/span ${c.ls.length};background:${bg};border:${selId === c.id ? '3px solid #dc2626' : '1px solid #9ca3af'};border-radius:3px;font-size:10px;padding:0;cursor:pointer;line-height:1.15;color:#111">${c.id}${l.length ? `<br><b>${l.length}</b>` : ''}</button>`;
+  });
+  return h + '</div>';
+}
+function estUbAbrir(c, id){
+  const e = estInit(), cel = estCeldas(), donde = estDonde(); let tab = 'G1';
+  const ref = id || (c && (donde[c] || [])[0]); if (ref){ const z = cel.find(x => x.id === ref); if (z) tab = z.t; }
+  EST_UB = { c: c || null, id: id || '', cant: '', q: '', f: '', s: '', tab };
+  let m = $('#estUb');
+  if (!m){ m = document.createElement('div'); m.id = 'estUb'; document.body.appendChild(m);
+    m.style.cssText = 'position:fixed;inset:0;background:rgba(17,24,39,.55);z-index:95;display:flex;align-items:flex-start;justify-content:center;padding:20px 10px;overflow:auto';
+    m.onclick = ev => { if (ev.target === m) estUbCerrar(); };
+    document.addEventListener('keydown', estUbEsc); }
+  estUbRender();
+}
+function estUbEsc(ev){ if (ev.key === 'Escape') estUbCerrar(); }
+function estUbCerrar(){ const m = $('#estUb'); if (m) m.remove(); document.removeEventListener('keydown', estUbEsc); EST_UB = null; vEstanteria(); }
+function estUbSel(id){
+  if (!EST_UB) return; EST_UB.id = id; const i = $('#estUbId'); if (i) i.value = id;
+  document.querySelectorAll('#estUb [data-cid]').forEach(b => b.style.border = b.dataset.cid === id ? '3px solid #dc2626' : '1px solid #9ca3af');
+}
+function estUbTab(t){ EST_UB.cant = $('#estUbCant') ? $('#estUbCant').value : ''; EST_UB.tab = t; estUbRender(); }
+function estUbElegir(c){ EST_UB.c = c; EST_UB.q = ''; estUbRender(); setTimeout(() => { const i = $('#estUbId'); if (i) i.focus(); }, 30); }
+function estUbBusca(){
+  const box = $('#estUbRes'); if (!box) return; const ws = norm(EST_UB.q).split(/\s+/).filter(Boolean);
+  if (!ws.length || norm(EST_UB.q).replace(/\s/g, '').length < 2){ box.innerHTML = '<p class="muted">Escribe código o palabras para buscar en la base.</p>'; return; }
+  const r = []; for (const p of PRODUCTOS){ if (ws.every(w => hayP(p).includes(w))){ r.push(p); if (r.length >= 40) break; } }
+  box.innerHTML = r.length ? `<table><tbody>${r.map(p => `<tr style="cursor:pointer" onclick="estUbElegir('${esc(String(p[0]))}')"><td style="white-space:nowrap"><b>${esc(String(p[0]))}</b></td><td>${esc(p[1])}</td></tr>`).join('')}</tbody></table>${r.length >= 40 ? '<p class="muted">Hay más: agrega palabras.</p>' : ''}` : '<p class="muted">Sin resultados.</p>';
+}
+function estUbFS(k, sel){ let v = sel.value; if (v === '__nuevo'){ v = estNuevo(k, EST_UB.f); if (!v){ estUbRender(); return; } } if (k === 'f'){ EST_UB.f = v; EST_UB.s = ''; } else EST_UB.s = v; EST_UB.cant = $('#estUbCant').value; estUbRender(); }
+function estUbRender(){
+  const m = $('#estUb'); if (!m || !EST_UB) return; const U = EST_UB, e = estInit(), donde = estDonde(), c = U.c, mk = c && e.prods[c];
+  const fams = [...new Set(estFams(e).concat('Sin clasificar'))].sort(), f = U.f || 'Sin clasificar', subs = [...new Set(estSubs(e, f).concat('General'))].sort(), sb = U.s || (estSubs(e, f)[0] || 'General');
+  const t = c ? estTotalProd(c) : null;
+  m.innerHTML = `<div style="background:#fff;border-radius:10px;max-width:1150px;width:100%;box-shadow:0 10px 30px #0006">
+    <div class="row" style="padding:12px 16px;border-bottom:1px solid #e5e7eb;align-items:center"><h3 style="flex:1;margin:0;color:var(--az)">📍 Ubicar producto en la estantería</h3><button class="b2" onclick="estUbCerrar()">Cerrar (Esc)</button></div>
+    <div style="padding:12px 16px">
+      ${c ? `<div class="row" style="align-items:center;flex-wrap:wrap"><div style="flex:1;min-width:260px"><b style="font-size:16px">${esc(c)}</b> ${esc(estDesc(c))}<div style="margin-top:4px">${estChips(c, donde) || '<span class="muted">Todavía no está en ningún casillero.</span>'}${t != null ? ` <span class="muted">· total <b>${t}</b></span>` : ''}</div></div><button class="b2" onclick="EST_UB.c=null;estUbRender()">Cambiar producto</button></div>`
+        : `<div><input id="estUbQ" placeholder="🔍 Buscar el producto en la base (código o palabras)" value="${esc(U.q)}" style="width:100%" oninput="EST_UB.q=this.value;estUbBusca()"><div id="estUbRes" style="max-height:200px;overflow:auto;margin-top:6px"></div></div>`}
+      <div class="row" style="align-items:flex-end;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid #e5e7eb">
+        <label>Casillero (escríbelo o tócalo abajo)<input id="estUbId" value="${esc(U.id)}" placeholder="ej: 4B.1, 9A.3, 12F" style="width:170px;text-transform:uppercase" oninput="EST_UB.id=this.value.toUpperCase();estUbSel(this.value.toUpperCase().trim())" onkeydown="if(event.key==='Enter')estUbPoner()"></label>
+        <label>Cantidad en el casillero (opcional)<input id="estUbCant" type="number" min="0" step="any" value="${esc(U.cant)}" style="width:150px" onkeydown="if(event.key==='Enter')estUbPoner()"></label>
+        ${c && !mk ? `<label>Familia${selFS(fams, f, "estUbFS('f',this)")}</label><label>Subfamilia${selFS(subs, sb, "estUbFS('s',this)")}</label>` : ''}
+        <button class="b" onclick="estUbPoner()" ${c ? '' : 'disabled'}>＋ Poner en este casillero</button></div>
+      <p class="muted" style="margin:6px 0">Doble clic en un casillero lo pone directo. Un producto puede estar en varios casilleros (repite). Si ya está en ese casillero, la cantidad se reemplaza.${c && !mk ? ' Es la primera vez que se ubica: elige su familia para el color del plano.' : ''}</p>
+      <div class="row" style="gap:4px;flex-wrap:wrap;margin:8px 0 6px">${(() => { let a = 1; return e.tramos.map(tr => { const x = `<button class="${U.tab === tr.id ? 'b' : 'b2'}" onclick="estUbTab('${tr.id}')">${esc(tr.nombre)} <span style="font-weight:normal;font-size:11px">(col ${a}${tr.cols > 1 ? '–' + (a + tr.cols - 1) : ''})</span></button>`; a += tr.cols; return x; }).join(''); })()}</div>
+      <div style="overflow-x:auto;padding-bottom:4px">${estMiniHTML(U.tab, U.id, c)}</div>
+      <p class="muted" style="margin:6px 0 0"><span style="background:#f3f4f6;border:1px solid #9ca3af;padding:0 8px">&nbsp;</span> vacío &nbsp; <span style="background:#bbf7d0;border:1px solid #9ca3af;padding:0 8px">&nbsp;</span> tiene productos (el número es cuántos) &nbsp; <span style="background:#fde68a;border:1px solid #9ca3af;padding:0 8px">&nbsp;</span> ya está este producto &nbsp; <span style="border:3px solid #dc2626;padding:0 8px">&nbsp;</span> elegido. Arriba la fila A y abajo la F (piso).</p>
+    </div></div>`;
+  if (!c) { estUbBusca(); setTimeout(() => { const i = $('#estUbQ'); if (i){ i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }, 30); }
+}
+function estUbPoner(){
+  const U = EST_UB; if (!U) return; if (!U.c) return toast('Primero elige el producto');
+  const e = estInit(), cel = estCeldas(), raw = String($('#estUbId').value || U.id).trim().toUpperCase().replace(/\s+/g, ''); let id = raw;
+  if (!cel.some(z => z.id === id)){
+    const sub = cel.filter(z => z.id.split('.')[0] === raw);
+    if (sub.length > 1) return toast(`${raw} está dividido: usa ${sub.map(z => z.id).join(' o ')}`);
+    const mm = raw.match(/^(\d+[A-F])(\d)$/);
+    if (mm && cel.some(z => z.id === mm[1] + '.' + mm[2])) id = mm[1] + '.' + mm[2]; else return toast(`El casillero "${raw}" no existe (ej: 4B.1, 9A.3, 12F)`);
+  }
+  const ct = String($('#estUbCant').value || '').trim().replace(',', '.'), q = ct === '' ? null : Number(ct);
+  if (q != null && (isNaN(q) || q < 0)) return toast('La cantidad no es válida');
+  const c = U.c;
+  if (!e.prods[c]){
+    const f = U.f || 'Sin clasificar', sb = U.s || (estSubs(e, f)[0] || 'General'), d = estDesc(c), mm = d.match(/(\d+(?:[.,]\d+)?X\d+(?:[.,]\d+)?(?:X\d+(?:[.,]\d+)?)?)/i);
+    e.prods[c] = { f, s: sb, lab: mm ? mm[1].toLowerCase() : d.slice(0, 16), n: e.sigN++ }; estColores(e, false);
+  }
+  const l = e.celdas[id] = e.celdas[id] || [], ya = l.includes(c); if (!ya) l.push(c);
+  if (q != null){ e.cant[id] = e.cant[id] || {}; e.cant[id][c] = q; }
+  guardar(); toast(ya ? `Actualizado en ${id}` : `Ubicado en ${id}`);
+  U.id = id; U.cant = ''; U.tab = (cel.find(z => z.id === id) || {}).t || U.tab; estUbRender(); vEstanteria();
+}
+function estCant(id, c, v){
+  const e = S.estanteria, t = String(v).trim().replace(',', '.'); e.cant[id] = e.cant[id] || {};
+  if (t === '') delete e.cant[id][c]; else { const q = Number(t); if (isNaN(q) || q < 0){ toast('Cantidad no válida'); return vEstanteria(); } e.cant[id][c] = q; }
+  if (!Object.keys(e.cant[id]).length) delete e.cant[id]; guardar(); vEstanteria();
 }
 function vEstanteriaHTML(){
   const e = estInit(), cel = estCeldas(), donde = estDonde(), modo = e.modo;
   const totalCol = e.tramos.reduce((a, t) => a + t.cols, 0), largo = e.tramos.reduce((a, t) => a + t.cols * t.ancho, 0);
-  const nProd = Object.keys(e.prods).length, ubic = Object.keys(e.prods).filter(c => donde[c]).length;
+  const nProd = Object.keys(e.prods).length, ubic = Object.keys(donde).length;
   const usadas = cel.filter(c => (e.celdas[c.id] || []).length).length;
   const fams = estFams(e), asign = [...new Set(Object.values(e.celdas).flat())].filter(c => e.prods[c]);
   const huerf = Object.values(e.celdas).flat().filter(c => !e.prods[c]);
-  const selCods = [...new Set(EST_SEL.flatMap(id => e.celdas[id] || []))];
-  const cand = estFiltrar(e, Object.assign({}, EST_AF, { q: '' }), donde), pAct = EST_ACT && e.prods[EST_ACT];
   const lista = estFiltrar(e, EST_PF, donde);
   const colDe = p => modo === 'producto' ? p.col : modo === 'sub' ? e.subCol[subKey(p.f, p.s)] : e.famCol[p.f];
   const sw = col => `<span style="display:inline-block;width:14px;height:14px;background:${col};border:1px solid #555;vertical-align:-2px;border-radius:2px"></span>`;
-  const chipsDonde = c => (donde[c] || []).map(id => `<span style="display:inline-flex;align-items:center;gap:2px;border:1px solid #bbb;border-radius:12px;padding:0 2px 0 7px;margin:1px;background:#fff;white-space:nowrap">📍${id}<button class="bx" title="Mover a otro casillero" onclick="event.stopPropagation();estMover('${esc(c)}','${id}')">↔</button><button class="bx" title="Sacar de ${id}" onclick="event.stopPropagation();estDesasignar('${id}','${esc(c)}')">✕</button></span>`).join('');
-  const aviso = EST_MOV ? `<b>↔ Moviendo #${(e.prods[EST_MOV.c] || {}).n} ${esc(EST_MOV.c)} ${esc(estDesc(EST_MOV.c))} desde ${EST_MOV.desde}</b><span class="muted">→ toca el casillero de destino</span><span style="flex:1"></span><button class="b2" onclick="EST_MOV=null;vEstanteria()">Cancelar</button>`
-    : pAct ? `<b>📍 Ubicando #${pAct.n} ${esc(EST_ACT)} ${esc(estDesc(EST_ACT))}</b><span class="muted">→ toca el casillero donde va</span><span style="flex:1"></span><button class="b2" onclick="EST_ACT=null;vEstanteria()">Terminar</button>` : '';
-  // ---- panel plano
-  const pPlano = `<div class="row" style="align-items:center"><label class="muted" style="flex-direction:row;align-items:center;gap:6px">Pintar por <select onchange="estModo(this.value)">${[['familia', 'Familia'], ['sub', 'Subfamilia'], ['producto', 'Producto']].map(([v, t]) => `<option value="${v}" ${modo === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
-      <span style="flex:1"></span><button class="b2" onclick="estModalEtq(false)">🏷 Etiquetas</button><button class="b2" onclick="estLimpiar()">🧹 Limpiar estantería</button><button class="b" onclick="estDlgImprimir()">🖨 Imprimir</button></div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;margin:8px 0">
-      <div class="card" style="margin:0;padding:6px 12px"><div class="muted">Productos de la estantería</div><b style="font-size:18px">${nProd}</b></div>
-      <div class="card" style="margin:0;padding:6px 12px"><div class="muted">Ubicados / sin ubicar</div><b style="font-size:18px">${ubic} / ${nProd - ubic}</b></div>
-      <div class="card" style="margin:0;padding:6px 12px"><div class="muted">Casilleros usados / libres</div><b style="font-size:18px">${usadas} / ${cel.length - usadas}</b> <span class="muted">(${totalCol} col · ${(largo / 100).toFixed(2).replace('.', ',')} m)</span></div></div>
-    <div id="estImpBox"></div>
-    <div class="row" style="margin:6px 0"><input id="estHL" placeholder="🔍 Resaltar producto en el plano (código o nombre)" value="${esc(EST_BUS)}" style="flex:1;min-width:260px" onchange="EST_BUS=this.value.trim();vEstanteria()" onkeydown="if(event.key==='Enter'){EST_BUS=this.value.trim();vEstanteria()}">
-      ${EST_BUS ? `<button class="b2" onclick="EST_BUS='';vEstanteria()">Ver todo</button>` : ''}</div>
-    <div data-keep="plano" style="overflow-x:auto;border:1px solid #ccc;border-radius:6px;background:#fafafa;padding:4px">${estSVG(1, totalCol, { modo, color: true })}</div>
-    <p class="muted" style="margin:4px 0">Toca un casillero para ver o cambiar su contenido (Ctrl o Shift + clic para elegir varios).</p>
-    ${asign.length ? `<div data-keep="ley" style="display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;margin-top:6px;max-height:130px;overflow:auto">${estLeyenda(e, modo, asign, false)}</div>` : '<p class="muted">La estantería está vacía: usa "➕ Agregar productos".</p>'}
-    ${huerf.length ? `<p class="warn">Hay casilleros con productos que ya no están marcados (${[...new Set(huerf)].join(', ')}).</p>` : ''}`;
-  // ---- panel casillero seleccionado
-  let pDet = '';
+  const aviso = EST_MOV ? `<b>↔ Moviendo ${esc(EST_MOV.c)} ${esc(estDesc(EST_MOV.c))} desde ${EST_MOV.desde}</b><span class="muted">→ toca el casillero de destino</span><span style="flex:1"></span><button class="b2" onclick="EST_MOV=null;vEstanteria()">Cancelar</button>` : '';
+  // ---- buscador de la base
+  const pBusca = `<div class="row" style="align-items:center"><input id="estBQ" placeholder="🔍 Buscar producto en la base: código o palabras (ej: cemento, perfil 50x50, 70511)" value="${esc(EST_BQ)}" style="flex:1;min-width:260px" oninput="EST_BQ=this.value;estBRes()">
+      <label style="flex-direction:row;align-items:center;gap:4px;color:inherit;font-size:13px"><input type="checkbox" ${EST_BSOLO ? 'checked' : ''} onchange="EST_BSOLO=this.checked;estBRes()"> Solo los que ya están en la estantería</label></div>
+    <div class="muted" id="estBCnt" style="margin:4px 0"></div><div id="estBRes" data-keep="bres" style="max-height:330px;overflow:auto;border:1px solid #e5e7eb;border-radius:6px"></div>`;
+  // ---- casillero seleccionado
+  let pDet = `<p class="muted" style="margin:0">Toca un casillero del plano para ver qué tiene (Ctrl o Shift + clic para elegir varios).</p>`;
   if (EST_SEL.length){
-    const c1 = EST_SEL.length === 1 ? cel.find(z => z.id === EST_SEL[0]) : null;
-    const tit = c1 ? `📦 Casillero ${c1.id} — columna ${c1.col}, nivel ${c1.ls.join('+')}${c1.ls.includes('F') ? ' (piso)' : ''}${c1.nsub > 1 ? ` · parte ${c1.sub} de ${c1.nsub}` : ''} · ${Math.round(c1.w)}×${c1.h} cm` : `📦 ${EST_SEL.length} casilleros: ${EST_SEL.join(', ')}`;
-    pDet = panel('det', tit, `<div class="row" style="margin-bottom:6px">${selCods.length ? `<button class="b2" onclick="estModalEtq(true)">🏷 Etiquetas de ${EST_SEL.length === 1 ? 'este casillero' : 'estos casilleros'}</button><button class="b2" onclick="estVaciar()">Vaciar</button>` : ''}<button class="b2" onclick="EST_SEL=[];vEstanteria()">Quitar selección</button></div>
-      ${c1 && selCods.length ? `<table><thead><tr><th>Orden</th><th></th><th>Producto</th><th>Familia › Subfamilia</th><th>También en</th><th>Acciones</th></tr></thead><tbody>
-        ${selCods.map((c, i) => { const p = e.prods[c] || { f: '?', s: '?', n: '?', col: '#ddd' }; return `<tr ${EST_MOV && EST_MOV.c === c ? 'style="background:#fff3c4"' : ''}><td style="white-space:nowrap"><button class="b2" title="Más a la izquierda" onclick="estMoverEnCelda('${c1.id}',${i},-1)">◀</button><button class="b2" title="Más a la derecha" onclick="estMoverEnCelda('${c1.id}',${i},1)">▶</button></td>
-          <td>${sw(colDe(p))} <b>#${p.n}</b></td><td><b>${esc(p.lab || '')}</b><br><span class="muted">${esc(c)} · ${esc(estDesc(c))}</span></td><td>${esc(p.f)} › ${esc(p.s)}</td><td>${(donde[c] || []).filter(x => x !== c1.id).join(', ') || '—'}</td>
-          <td style="white-space:nowrap"><button class="b2" onclick="estMover('${esc(c)}','${c1.id}')">↔ Mover</button> <button class="b2" onclick="estDesasignar('${c1.id}','${esc(c)}')">✕ Sacar</button></td></tr>`; }).join('')}</tbody></table>`
-      : selCods.length ? `<p>Contienen: ${selCods.map(c => '#' + ((e.prods[c] || {}).n || '?') + ' ' + esc(c)).join(', ')}</p>` : '<p class="muted">Vacío. Agrega productos desde "➕ Agregar productos" con el botón <b>＋</b>.</p>'}`, 'id="estDet"');
+    const c1 = EST_SEL.length === 1 ? cel.find(z => z.id === EST_SEL[0]) : null, selCods = [...new Set(EST_SEL.flatMap(id => e.celdas[id] || []))];
+    if (c1){
+      const l = e.celdas[c1.id] || [];
+      pDet = `<div class="row" style="align-items:center;flex-wrap:wrap"><b style="font-size:16px;flex:1">📦 Casillero ${c1.id}</b><span class="muted">columna ${c1.col} · nivel ${c1.ls.join('+')}${c1.ls.includes('F') ? ' (piso)' : ''}${c1.nsub > 1 ? ` · parte ${c1.sub} de ${c1.nsub}` : ''} · ${Math.round(c1.w)}×${c1.h} cm</span></div>
+        <div class="row" style="margin:6px 0;flex-wrap:wrap"><button class="b" onclick="estUbAbrir(null,'${c1.id}')">＋ Agregar producto aquí</button>${l.length ? `<button class="b2" onclick="estModalEtq(true)">🏷 Etiquetas</button><button class="b2" onclick="estVaciar()">Vaciar</button>` : ''}<button class="b2" onclick="EST_SEL=[];vEstanteria()">Quitar selección</button></div>
+        ${l.length ? `<table><thead><tr><th>Orden</th><th></th><th>Producto</th><th>Cantidad</th><th>También en</th><th></th></tr></thead><tbody>${l.map((c, i) => { const p = e.prods[c] || { f: '?', s: '?', n: '?', col: '#ddd' };
+          return `<tr ${EST_MOV && EST_MOV.c === c ? 'style="background:#fff3c4"' : ''}><td style="white-space:nowrap"><button class="b2" title="Más a la izquierda" onclick="estMoverEnCelda('${c1.id}',${i},-1)">◀</button><button class="b2" title="Más a la derecha" onclick="estMoverEnCelda('${c1.id}',${i},1)">▶</button></td>
+            <td>${sw(colDe(p))}</td><td><b>${esc(c)}</b> ${esc(estDesc(c))}<br><span class="muted">${esc(p.f)} › ${esc(p.s)}</span></td>
+            <td><input type="number" min="0" step="any" placeholder="—" value="${(e.cant[c1.id] || {})[c] != null ? e.cant[c1.id][c] : ''}" style="width:90px" onchange="estCant('${c1.id}','${esc(c)}',this.value)"></td>
+            <td>${(donde[c] || []).filter(x => x !== c1.id).map(x => `📍${x}${estQtxt((e.cant[x] || {})[c])}`).join(', ') || '—'}</td>
+            <td style="white-space:nowrap"><button class="b2" onclick="estMover('${esc(c)}','${c1.id}')">↔ Mover</button> <button class="b2" onclick="estDesasignar('${c1.id}','${esc(c)}')">✕ Sacar</button></td></tr>`; }).join('')}</tbody></table>`
+          : `<p style="margin:6px 0"><b>Vacío.</b> <span class="muted">No tiene ningún producto.</span></p>`}`;
+    } else pDet = `<div class="row" style="align-items:center;flex-wrap:wrap"><b style="flex:1">📦 ${EST_SEL.length} casilleros: ${EST_SEL.join(', ')}</b>${selCods.length ? `<button class="b2" onclick="estModalEtq(true)">🏷 Etiquetas</button><button class="b2" onclick="estVaciar()">Vaciar</button>` : ''}<button class="b2" onclick="EST_SEL=[];vEstanteria()">Quitar selección</button></div>
+        <p style="margin:6px 0">${EST_SEL.map(id => `<b>${id}</b>: ${(e.celdas[id] || []).length ? (e.celdas[id] || []).map(c => esc(c) + estQtxt((e.cant[id] || {})[c])).join(', ') : '<span class="muted">vacío</span>'}`).join('<br>')}</p>`;
   }
-  // ---- panel agregar
-  const pAgr = `<p class="muted" style="margin:0 0 6px">Toca <b>Ubicar</b> y luego el casillero en el plano.${EST_SEL.length ? ` O ponlo directo en ${EST_SEL.join(', ')} con <b>＋</b>.` : ''} En 📍 puedes mover (↔) o sacar (✕) un producto de donde está. ¿Falta uno? <a href="#" onclick="estModalMarcar();return false">＋ Marcar productos de la base</a></p>
-    <div class="row" style="align-items:center"><select onchange="EST_AF.f=this.value;EST_AF.s='';vEstanteria()">${selOpts(fams, EST_AF.f, 'Todas las familias')}</select>
-      <select onchange="EST_AF.s=this.value;vEstanteria()">${selOpts(estSubs(e, EST_AF.f), EST_AF.s, 'Todas las subfamilias')}</select>
-      <input id="estAQ" placeholder="🔍 Buscar: ej. 50x50, cuadrado 3mm, 70511" value="${esc(EST_AF.q)}" style="flex:1;min-width:240px" oninput="EST_AF.q=this.value;estFiltroVivo(this,'estCand','estCandN')">
-      <label style="flex-direction:row;align-items:center;gap:4px;color:inherit;font-size:13px"><input type="checkbox" ${EST_AF.sin ? 'checked' : ''} onchange="EST_AF.sin=this.checked;vEstanteria()"> Solo sin ubicar</label>
-      <label style="flex-direction:row;align-items:center;gap:4px;color:inherit;font-size:13px"><input type="checkbox" ${EST_AF.sig ? 'checked' : ''} onchange="EST_AF.sig=this.checked;vEstanteria()"> Al ubicar, pasar al siguiente</label></div>
-    <div class="muted" style="margin:4px 0" id="estCandN">${cand.length} producto(s)</div>
-    <div data-keep="cand" id="estCand" style="max-height:340px;overflow:auto;border:1px solid #e5e7eb;border-radius:6px">${(() => { let h = '', g = '';
-      cand.forEach(([c, p]) => { const gg = p.f + ' › ' + p.s;
-        if (gg !== g){ g = gg; h += `<div data-grp="1" style="background:#f3f4f6;padding:4px 8px;font-weight:bold;font-size:12px;position:sticky;top:0">${sw(modo === 'familia' ? e.famCol[p.f] : e.subCol[subKey(p.f, p.s)])} ${esc(gg)}</div>`; }
-        const act = EST_ACT === c;
-        h += `<div data-txt="${esc(norm(c + ' ' + estDesc(c) + ' ' + p.lab + ' ' + gg))}" onclick="estActivar('${esc(c)}')" style="display:flex;gap:8px;align-items:center;padding:5px 8px;border-bottom:1px solid #eee;cursor:pointer;${act ? 'background:#fff3c4;outline:2px solid #d4a017' : ''}">
-          ${sw(colDe(p))}<b style="min-width:42px">#${p.n}</b><b style="min-width:120px">${esc(p.lab)}</b><span style="flex:1"><span class="muted">${esc(c)}</span> ${esc(estDesc(c))}</span>
-          <span>${chipsDonde(c) || '<span class="muted">sin ubicar</span>'}</span>
-          <span style="white-space:nowrap"><button class="${act ? 'b' : 'b2'}" onclick="event.stopPropagation();estActivar('${esc(c)}')">${act ? '📍 Ubicando' : 'Ubicar'}</button>${EST_SEL.length ? ` <button class="b2" title="Poner en ${EST_SEL.join(', ')}" onclick="event.stopPropagation();estAsignar('${esc(c)}')" ${EST_SEL.every(id => (e.celdas[id] || []).includes(c)) ? 'disabled' : ''}>＋ ${EST_SEL.length === 1 ? EST_SEL[0] : EST_SEL.length + ' cas.'}</button>` : ''}</span></div>`; });
-      return h || `<p class="muted" style="padding:8px">${EST_AF.sin ? 'Todos los productos de este filtro ya están ubicados (desmarca "Solo sin ubicar" para verlos).' : 'Sin productos.'}</p>`; })()}</div>`;
-  // ---- panel productos marcados
-  const pLista = `<div class="row"><button class="b" onclick="estModalMarcar()">＋ Marcar productos de la base</button><select onchange="EST_PF.f=this.value;EST_PF.s='';vEstanteria()">${selOpts(fams, EST_PF.f, 'Todas las familias')}</select>
+  const pPlano = `<div class="row" style="align-items:center;flex-wrap:wrap"><label class="muted" style="flex-direction:row;align-items:center;gap:6px">Pintar por <select onchange="estModo(this.value)">${[['familia', 'Familia'], ['sub', 'Subfamilia'], ['producto', 'Producto']].map(([v, t]) => `<option value="${v}" ${modo === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+      <input id="estHL" placeholder="🔍 Resaltar producto en el plano" value="${esc(EST_BUS)}" style="flex:1;min-width:200px" onchange="EST_BUS=this.value.trim();vEstanteria()" onkeydown="if(event.key==='Enter'){EST_BUS=this.value.trim();vEstanteria()}">${EST_BUS ? `<button class="b2" onclick="EST_BUS='';vEstanteria()">Ver todo</button>` : ''}</div>
+    <div data-keep="plano" style="overflow-x:auto;border:1px solid #ccc;border-radius:6px;background:#fafafa;padding:4px;margin-top:6px">${estSVG(1, totalCol, { modo, color: true })}</div>
+    <div id="estDet" style="margin-top:8px;border:2px solid #1F3864;border-radius:8px;padding:10px;background:#f8faff">${pDet}</div>
+    ${asign.length ? `<div data-keep="ley" style="display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;margin-top:8px;max-height:110px;overflow:auto">${estLeyenda(e, modo, asign, false)}</div>` : ''}
+    ${huerf.length ? `<p class="warn">Hay casilleros con productos que ya no están marcados (${[...new Set(huerf)].join(', ')}).</p>` : ''}`;
+  // ---- lista de productos de la estantería
+  const pLista = `<div class="row"><select onchange="EST_PF.f=this.value;EST_PF.s='';vEstanteria()">${selOpts(fams, EST_PF.f, 'Todas las familias')}</select>
       <select onchange="EST_PF.s=this.value;vEstanteria()">${selOpts(estSubs(e, EST_PF.f), EST_PF.s, 'Todas las subfamilias')}</select>
       <input id="estPQ" placeholder="🔍 Filtrar" value="${esc(EST_PF.q)}" oninput="EST_PF.q=this.value;estFiltroVivo(this,'estLst','estLstN')">
       <label style="flex-direction:row;align-items:center;gap:4px;color:inherit;font-size:13px"><input type="checkbox" ${EST_PF.sin ? 'checked' : ''} onchange="EST_PF.sin=this.checked;vEstanteria()"> Solo sin ubicar</label></div>
     <div class="muted" style="margin:4px 0" id="estLstN">${lista.length} de ${nProd} producto(s)${EST_PF.f || EST_PF.s || EST_PF.sin ? ' (filtrado)' : ''}</div>
-    <div data-keep="lista" style="max-height:420px;overflow:auto"><table><thead><tr><th>#</th><th>Color</th><th>Código</th><th>Descripción</th><th>Familia</th><th>Subfamilia</th><th>Etiqueta corta</th><th>Ubicación</th><th></th></tr></thead><tbody id="estLst">
-    ${lista.map(([c, p]) => `<tr data-txt="${esc(norm(c + ' ' + estDesc(c) + ' ' + p.lab))}"><td>${p.n}</td><td><input type="color" value="${p.col}" style="width:36px;padding:0" onchange="estProdEdit('${esc(c)}','col',this.value)"></td><td>${esc(c)}</td><td>${esc(estDesc(c))}</td>
+    <div data-keep="lista" style="max-height:420px;overflow:auto"><table><thead><tr><th>#</th><th>Color</th><th>Código</th><th>Descripción</th><th>Familia</th><th>Subfamilia</th><th>Etiqueta corta</th><th>Dónde está (cantidad)</th><th></th></tr></thead><tbody id="estLst">
+    ${lista.map(([c, p]) => `<tr data-txt="${esc(norm(c + ' ' + estDesc(c) + ' ' + p.lab))}" ondblclick="estUbAbrir('${esc(c)}')"><td>${p.n}</td><td><input type="color" value="${p.col}" style="width:36px;padding:0" onchange="estProdEdit('${esc(c)}','col',this.value)"></td><td>${esc(c)}</td><td>${esc(estDesc(c))}</td>
       <td>${selFS(fams, p.f, `estProdFS('${esc(c)}','f',this)`)}</td><td>${selFS(estSubs(e, p.f), p.s, `estProdFS('${esc(c)}','s',this)`)}</td>
-      <td><input value="${esc(p.lab)}" style="min-width:110px" onchange="estProdEdit('${esc(c)}','lab',this.value)"></td><td>${chipsDonde(c) || '<span class="muted">—</span>'}</td>
-      <td><button class="b2" title="Quitar de la estantería" onclick="estDesmarcar('${esc(c)}')">✕</button></td></tr>`).join('')}</tbody></table></div>
-    <div style="margin-top:10px"><button class="b" onclick="estModalMarcar()">＋ Marcar productos de la base</button></div>`;
-  // ---- panel colores y medidas
+      <td><input value="${esc(p.lab)}" style="min-width:110px" onchange="estProdEdit('${esc(c)}','lab',this.value)"></td><td>${estChips(c, donde) || '<span class="muted">—</span>'}</td>
+      <td style="white-space:nowrap"><button class="b2" title="Ubicar" onclick="estUbAbrir('${esc(c)}')">📍</button> <button class="b2" title="Quitar de la estantería" onclick="estDesmarcar('${esc(c)}')">✕</button></td></tr>`).join('')}</tbody></table></div>`;
+  // ---- colores y medidas
   const pConf = `<div class="grid2"><div><h4 style="margin:0 0 4px">Familias</h4><table><thead><tr><th>Color</th><th>Familia</th><th>Abrev.</th></tr></thead><tbody>
       ${fams.map(f => `<tr><td><input type="color" value="${e.famCol[f]}" style="width:36px;padding:0" onchange="estColorEdit('f','${esc(f)}',this.value)"></td><td>${esc(f)}</td><td><input value="${esc(e.famAb[f])}" style="width:80px" onchange="estColorEdit('fa','${esc(f)}',this.value)"></td></tr>`).join('')}</tbody></table></div>
     <div><h4 style="margin:0 0 4px">Subfamilias</h4><table><thead><tr><th>Color</th><th>Familia › Subfamilia</th><th>Abrev.</th></tr></thead><tbody>
       ${[...new Set(Object.values(e.prods).map(p => subKey(p.f, p.s)))].sort().map(k => `<tr><td><input type="color" value="${e.subCol[k]}" style="width:36px;padding:0" onchange="estColorEdit('s','${esc(k)}',this.value)"></td><td>${esc(k.replace('|', ' › '))}</td><td><input value="${esc(e.subAb[k])}" style="width:80px" onchange="estColorEdit('sa','${esc(k)}',this.value)"></td></tr>`).join('')}</tbody></table></div></div>
     <button class="b2" style="margin-top:8px" onclick="estRecolorear()">🎨 Regenerar colores automáticos</button>
-    <h4 style="margin:12px 0 4px">Medidas por tramo (de izquierda a derecha)</h4>
-    <table><thead><tr><th>Tramo</th><th>Columnas</th><th>Ancho columna (cm)</th><th>Alto de cada nivel en cm, de piso hacia arriba (F, E, D, C, B, A)</th></tr></thead><tbody>
+    <h4 style="margin:12px 0 4px">Medidas por grupo (de izquierda a derecha)</h4>
+    <table><thead><tr><th>Grupo</th><th>Columnas</th><th>Ancho columna (cm)</th><th>Alto de cada nivel en cm, de piso hacia arriba (F, E, D, C, B, A)</th></tr></thead><tbody>
     ${e.tramos.map((t, i) => `<tr><td><span style="display:inline-block;width:12px;height:12px;background:${t.color};border:1px solid #555"></span> <input value="${esc(t.nombre)}" onchange="estTramoEdit(${i},'nombre',this.value)"></td><td>${t.cols}</td>
       <td><input type="number" value="${t.ancho}" style="width:70px" onchange="estTramoEdit(${i},'ancho',this.value)"></td><td><input value="${t.niveles.join(', ')}" onchange="estTramoEdit(${i},'niveles',this.value)"></td></tr>`).join('')}</tbody></table>
-    <button class="b2" style="margin-top:8px" onclick="if(confirm('¿Restaurar las medidas del Excel?')){S.estanteria.tramos=JSON.parse(JSON.stringify(EST_TRAMOS_DEF));guardar();vEstanteria()}">Restaurar medidas del Excel</button>
-    <p class="muted">Si cambias el número de columnas o niveles, los casilleros que dejen de existir no se muestran (sus asignaciones quedan guardadas).</p>`;
-  $('#main').innerHTML = `<div class="row noprint" style="margin-bottom:8px;gap:6px"><span style="font-weight:bold;color:var(--az);font-size:18px;flex:1">🗄 Estantería</span>
-      <button class="b2" onclick="Object.keys(EST_OPEN).forEach(k=>EST_OPEN[k]=true);vEstanteria()">Expandir todo</button><button class="b2" onclick="Object.keys(EST_OPEN).forEach(k=>EST_OPEN[k]=false);vEstanteria()">Colapsar todo</button></div>
-    ${panel('plano', '🗺 Plano de la estantería', pPlano)}
-    ${pDet}
-    ${panel('agregar', `➕ Agregar productos a la estantería <span class="muted" style="font-weight:normal">(${nProd - ubic} sin ubicar)</span>`, pAgr)}
-    ${panel('lista', `📋 Productos marcados para la estantería (${nProd})`, pLista)}
+    <button class="b2" style="margin-top:8px" onclick="if(confirm('¿Restaurar las medidas de partida?')){S.estanteria.tramos=JSON.parse(JSON.stringify(EST_TRAMOS_DEF));guardar();vEstanteria()}">Restaurar medidas de partida</button>`;
+  const kp = (t, v, x) => `<div class="card" style="margin:0;padding:6px 12px"><div class="muted">${t}</div><b style="font-size:18px">${v}</b>${x || ''}</div>`;
+  $('#main').innerHTML = `<div class="row noprint" style="margin-bottom:8px;gap:6px;align-items:center;flex-wrap:wrap"><span style="font-weight:bold;color:var(--az);font-size:18px;flex:1">🗄 Estantería</span>
+      ${kp('Productos ubicados', ubic)}${kp('Casilleros usados / libres', `${usadas} / ${cel.length - usadas}`, ` <span class="muted">(${totalCol} col · ${(largo / 100).toFixed(2).replace('.', ',')} m)</span>`)}
+      <button class="b2" onclick="estModalEtq(false)">🏷 Etiquetas</button><button class="b2" onclick="estLimpiar()">🧹 Limpiar</button><button class="b" onclick="estDlgImprimir()">🖨 Imprimir</button></div>
+    <div id="estImpBox"></div>
+    <div class="card"><h3 style="margin:0 0 8px;color:var(--az)">🔎 Productos de la base</h3>${pBusca}</div>
+    <div class="card"><h3 style="margin:0 0 8px;color:var(--az)">🗺 Plano de la estantería</h3>${pPlano}</div>
+    ${panel('lista', `📋 Productos con ficha en la estantería (${nProd})`, pLista)}
     ${panel('conf', '⚙ Colores, abreviaturas y medidas', pConf)}
     ${aviso ? `<div style="position:fixed;bottom:14px;left:50%;transform:translateX(-50%);z-index:50;max-width:92vw;box-shadow:0 4px 14px #0004;background:#fff3c4;border:2px solid #d4a017;border-radius:8px;padding:8px 12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">${aviso}</div>` : ''}`;
-  if (EST_AF.q){ const i = $('#estAQ'); if (i) estFiltroVivo(i, 'estCand', 'estCandN'); }
+  estBRes();
   if (EST_PF.q){ const i = $('#estPQ'); if (i) estFiltroVivo(i, 'estLst', 'estLstN'); }
 }
 /* ---- Etiquetas para impresora térmica de 80 mm ---- */
