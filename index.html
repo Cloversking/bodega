@@ -54,6 +54,7 @@ td input,td select{width:100%;padding:4px}
 @media print{#top,header,nav,.noprint{display:none!important}body{background:#fff}.card{border:0}main{padding:0;max-width:none}#mapa{height:175mm!important}.leaflet-control-zoom,.handle{display:none!important}}
 .leaflet-tooltip.lbl{background:none!important;border:none!important;box-shadow:none!important;padding:0!important;font-weight:bold;font-size:11px;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff}
 .leaflet-tooltip.lbl:before{display:none!important}.lblR{font-size:13px;text-transform:uppercase}
+.famb{display:inline-flex;align-items:center;gap:4px;border:1px solid;border-radius:10px;padding:0 7px;font-size:11px;line-height:17px;white-space:nowrap}.famb i{width:8px;height:8px;border-radius:50%;display:inline-block}
 .leyenda{background:#fff;padding:6px 8px;border:1px solid #999;border-radius:5px;font-size:11px;line-height:1.5;max-width:270px}
 .sw{width:12px;height:12px;border-radius:50%;display:inline-block;border:2px solid #0003;vertical-align:middle}
 .titulo-print{display:none}@media print{.titulo-print{display:block;font-size:15px;font-weight:bold;margin:0 0 4px}}
@@ -1137,6 +1138,48 @@ let EST_BQ = '', EST_BSOLO = false, EST_UB = null;
 const estQtxt = q => q == null ? '' : ' · <b>' + q + '</b>';
 function estChips(c, donde){ const e = S.estanteria; return (donde[c] || []).map(id => `<span style="display:inline-flex;align-items:center;gap:2px;border:1px solid #bbb;border-radius:12px;padding:0 2px 0 7px;margin:1px;background:#fff;white-space:nowrap">📍${id}${estQtxt((e.cant[id] || {})[c])}<button class="bx" title="Mover a otro casillero" onclick="event.stopPropagation();estMover('${esc(c)}','${id}')">↔</button><button class="bx" title="Sacar de ${id}" onclick="event.stopPropagation();estDesasignar('${id}','${esc(c)}')">✕</button></span>`).join(''); }
 function estTotalProd(c){ const e = S.estanteria; let t = 0, hay = false; Object.keys(e.celdas).forEach(id => { if ((e.celdas[id] || []).includes(c)){ const q = (e.cant[id] || {})[c]; if (q != null){ t += q; hay = true; } } }); return hay ? t : null; }
+/* ---- familia / subfamilia de un producto (crea o corrige su ficha) ---- */
+let EST_FM = null;
+function famBadge(c){
+  const e = S.estanteria, p = e && e.prods && e.prods[c];
+  if (!p) return `<span class="famb" style="background:#f3f4f6;color:#6b7280;border-color:#d1d5db" title="Sin familia: toca 🏷 para asignarla">Sin familia</span>`;
+  const col = (e.famCol && e.famCol[p.f]) || '#6b7280';
+  return `<span class="famb" style="border-color:${col};color:#1f2937;background:${col}22" title="${esc(p.f)} › ${esc(p.s)}"><i style="background:${col}"></i>${esc(p.f)} <span style="opacity:.55">›</span> ${esc(p.s)}</span>`;
+}
+function famBtn(c){ return `<button class="b2" style="padding:1px 6px" title="Asignar o cambiar familia y subfamilia" onclick="event.stopPropagation();estFamAbrir('${esc(c)}')">🏷</button>`; }
+function estFamAbrir(c){
+  const e = estInit(), p = e.prods[c];
+  EST_FM = { c, f: p ? p.f : '', s: p ? p.s : '', nuevo: !p };
+  let m = $('#estFam');
+  if (!m){ m = document.createElement('div'); m.id = 'estFam'; document.body.appendChild(m);
+    m.style.cssText = 'position:fixed;inset:0;background:rgba(17,24,39,.55);z-index:130;display:flex;align-items:flex-start;justify-content:center;padding:60px 10px;overflow:auto'; }
+  estFamRender();
+}
+function estFamRender(){
+  const m = $('#estFam'); if (!m || !EST_FM) return; const e = estInit(), F = EST_FM;
+  m.innerHTML = `<div style="background:#fff;border-radius:10px;max-width:520px;width:100%;box-shadow:0 10px 30px #0006;padding:14px 16px">
+    <h3 style="margin:0 0 6px;color:var(--az)">🏷 Familia y subfamilia</h3>
+    <div style="margin-bottom:8px"><b>${esc(F.c)}</b> ${esc(estDesc(F.c))}</div>
+    <div class="row" style="align-items:flex-end;flex-wrap:wrap">
+      <label>Familia${selFS(estFams(e), F.f, "estFamPick('f',this)")}</label>
+      <label>Subfamilia${F.f ? selFS(estSubs(e, F.f), F.s, "estFamPick('s',this)") : '<select disabled><option>elige familia</option></select>'}</label></div>
+    <div class="row" style="margin-top:12px;justify-content:flex-end"><button class="b2" onclick="estFamCerrar()">Cancelar</button><button class="b" onclick="estFamGuardar()">Guardar</button></div></div>`;
+}
+function estFamPick(k, sel){
+  const F = EST_FM; let v = sel.value;
+  if (v === '__nuevo'){ v = estNuevo(k, F.f); if (!v){ estFamRender(); return; } }
+  if (k === 'f'){ F.f = v; F.s = ''; } else F.s = v;
+  estFamRender();
+}
+function estFamCerrar(){ const m = $('#estFam'); if (m) m.remove(); EST_FM = null; }
+function estFamGuardar(){
+  const F = EST_FM; if (!F) return; if (!F.f || !F.s) return toast('Elige la familia y la subfamilia');
+  const e = estInit(), c = F.c;
+  if (e.prods[c]){ e.prods[c].f = F.f; e.prods[c].s = F.s; }
+  else { const d = estDesc(c), mm = d.match(/(\d+(?:[.,]\d+)?X\d+(?:[.,]\d+)?(?:X\d+(?:[.,]\d+)?)?)/i); e.prods[c] = { f: F.f, s: F.s, lab: mm ? mm[1].toLowerCase() : d.slice(0, 16), n: e.sigN++ }; }
+  estColores(e, false); guardar(); toast(`${c}: ${F.f} › ${F.s}`);
+  estFamCerrar(); if (EST_UB) estUbRender(); if (typeof TAB !== 'undefined' && TAB === 'estanteria') vEstanteria(); else if ($('#res')) buscar();
+}
 function estBRes(){
   const box = $('#estBRes'); if (!box) return; const e = S.estanteria, donde = estDonde(), ws = norm(EST_BQ).split(/\s+/).filter(Boolean);
   let r = [], lleno = false;
@@ -1144,8 +1187,8 @@ function estBRes(){
   else if (EST_BSOLO){ r = Object.keys(donde).map(c => PROD_MAP[c]).filter(Boolean).slice(0, 80); }
   else { box.innerHTML = `<p class="muted" style="margin:8px 4px">Escribe código o palabras (ej: <i>cemento</i>, <i>perfil 50x50</i>, <i>70511</i>). Doble clic en un producto para ubicarlo.</p>`; $('#estBCnt').textContent = `${PRODUCTOS.length} productos en la base`; return; }
   $('#estBCnt').textContent = lleno ? 'Más de 80 resultados: agrega palabras para acotar' : r.length + ' resultado(s)';
-  box.innerHTML = r.length ? `<table><thead><tr><th>Código</th><th>Producto</th><th>Dónde está (casillero · cantidad)</th><th></th></tr></thead><tbody>${r.map(p => { const c = String(p[0]), t = estTotalProd(c);
-    return `<tr ondblclick="estUbAbrir('${esc(c)}')" style="cursor:pointer" title="Doble clic para ubicar en un casillero"><td style="white-space:nowrap"><b>${esc(c)}</b></td><td>${esc(p[1])}</td><td>${estChips(c, donde) || '<span class="muted">sin ubicar</span>'}${t != null ? ` <span class="muted">· total <b>${t}</b></span>` : ''}</td><td style="white-space:nowrap"><button class="b" onclick="estUbAbrir('${esc(c)}')">📍 Ubicar</button></td></tr>`; }).join('')}</tbody></table>` : '<p class="muted" style="margin:8px 4px">Sin resultados.</p>';
+  box.innerHTML = r.length ? `<table><thead><tr><th>Código</th><th>Producto</th><th>Familia</th><th>Dónde está (casillero · cantidad)</th><th></th></tr></thead><tbody>${r.map(p => { const c = String(p[0]), t = estTotalProd(c);
+    return `<tr ondblclick="estUbAbrir('${esc(c)}')" style="cursor:pointer" title="Doble clic para ubicar en un casillero"><td style="white-space:nowrap"><b>${esc(c)}</b></td><td>${esc(p[1])}</td><td style="white-space:nowrap">${famBadge(c)} ${famBtn(c)}</td><td>${estChips(c, donde) || '<span class="muted">sin ubicar</span>'}${t != null ? ` <span class="muted">· total <b>${t}</b></span>` : ''}</td><td style="white-space:nowrap"><button class="b" onclick="estUbAbrir('${esc(c)}')">📍 Ubicar</button></td></tr>`; }).join('')}</tbody></table>` : '<p class="muted" style="margin:8px 4px">Sin resultados.</p>';
 }
 function estMiniHTML(tid, selId, cod){
   const e = estInit(), cel = estCeldas().filter(c => c.t === tid), t = e.tramos.find(x => x.id === tid); if (!t || !cel.length) return '';
@@ -1200,7 +1243,7 @@ function estUbRender(){
   m.innerHTML = `<div style="background:#fff;border-radius:10px;max-width:1150px;width:100%;box-shadow:0 10px 30px #0006">
     <div class="row" style="padding:12px 16px;border-bottom:1px solid #e5e7eb;align-items:center"><h3 style="flex:1;margin:0;color:var(--az)">📍 Ubicar producto en la estantería</h3><button class="b2" onclick="estUbCerrar()">Cerrar</button></div>
     <div style="padding:12px 16px">
-      ${c ? `<div class="row" style="align-items:center;flex-wrap:wrap"><div style="flex:1;min-width:260px"><b style="font-size:16px">${esc(c)}</b> ${esc(estDesc(c))}<div style="margin-top:4px">${estChips(c, donde) || '<span class="muted">Todavía no está en ningún casillero.</span>'}${t != null ? ` <span class="muted">· total <b>${t}</b></span>` : ''}</div></div><button class="b2" onclick="EST_UB.c=null;estUbRender()">Cambiar producto</button></div>`
+      ${c ? `<div class="row" style="align-items:center;flex-wrap:wrap"><div style="flex:1;min-width:260px"><b style="font-size:16px">${esc(c)}</b> ${esc(estDesc(c))}<div style="margin-top:4px">${famBadge(c)} ${famBtn(c)}</div><div style="margin-top:4px">${estChips(c, donde) || '<span class="muted">Todavía no está en ningún casillero.</span>'}${t != null ? ` <span class="muted">· total <b>${t}</b></span>` : ''}</div></div><button class="b2" onclick="EST_UB.c=null;estUbRender()">Cambiar producto</button></div>`
         : `<div><input id="estUbQ" placeholder="🔍 Buscar el producto en la base (código o palabras)" value="${esc(U.q)}" style="width:100%" oninput="EST_UB.q=this.value;estUbBusca()"><div id="estUbRes" style="max-height:200px;overflow:auto;margin-top:6px"></div></div>`}
       <div id="estUbEn">${estUbEnHTML()}</div>
       <div class="row" style="align-items:flex-end;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid #e5e7eb">
@@ -1285,7 +1328,7 @@ function vEstanteriaHTML(){
         <div class="row" style="margin:6px 0;flex-wrap:wrap"><button class="b" onclick="estUbAbrir(null,'${c1.id}')">＋ Agregar producto aquí</button>${l.length ? `<button class="b2" onclick="estModalEtq(true)">🏷 Etiquetas</button><button class="b2" onclick="estVaciar()">Vaciar</button>` : ''}<button class="b2" onclick="EST_SEL=[];vEstanteria()">Quitar selección</button></div>
         ${l.length ? `<table><thead><tr><th>Orden</th><th></th><th>Producto</th><th>Cantidad</th><th>También en</th><th></th></tr></thead><tbody>${l.map((c, i) => { const p = e.prods[c] || { f: '?', s: '?', n: '?', col: '#ddd' };
           return `<tr ${EST_MOV && EST_MOV.c === c ? 'style="background:#fff3c4"' : ''}><td style="white-space:nowrap"><button class="b2" title="Más a la izquierda" onclick="estMoverEnCelda('${c1.id}',${i},-1)">◀</button><button class="b2" title="Más a la derecha" onclick="estMoverEnCelda('${c1.id}',${i},1)">▶</button></td>
-            <td>${sw(colDe(p))}</td><td><b>${esc(c)}</b> ${esc(estDesc(c))}<br><span class="muted">${esc(p.f)} › ${esc(p.s)}</span></td>
+            <td>${sw(colDe(p))}</td><td><b>${esc(c)}</b> ${esc(estDesc(c))}<br>${famBadge(c)} ${famBtn(c)}</td>
             <td><input type="number" min="0" step="any" placeholder="—" value="${(e.cant[c1.id] || {})[c] != null ? e.cant[c1.id][c] : ''}" style="width:90px" onchange="estCant('${c1.id}','${esc(c)}',this.value)"></td>
             <td>${(donde[c] || []).filter(x => x !== c1.id).map(x => `📍${x}${estQtxt((e.cant[x] || {})[c])}`).join(', ') || '—'}</td>
             <td style="white-space:nowrap"><button class="b2" onclick="estMover('${esc(c)}','${c1.id}')">↔ Mover</button> <button class="b2" onclick="estDesasignar('${c1.id}','${esc(c)}')">✕ Sacar</button></td></tr>`; }).join('')}</tbody></table>`
@@ -1892,7 +1935,7 @@ function buscar(){
   }
   $('#res').innerHTML = !words.length && !est ? '<p class="muted">Escribe para buscar.</p>' : !res.length ? '<p class="muted">Sin resultados.</p>' :
   `<table><thead><tr><th>Código</th><th>Descripción</th><th class="num">Peso kg</th><th>Confianza</th><th></th></tr></thead><tbody>
-  ${res.map(p => { const x = producto(p[0]); return `<tr><td style="white-space:nowrap">${esc(p[0])}</td><td>${badgeOrigen(p)} ${esc(x.desc)}</td><td class="num"><b>${fmt(x.peso, 2)}</b></td><td><span class="tag ${x.conf}">${x.conf}</span>${est ? `<div class="muted" style="font-size:11px">${esc(E.prods[p[0]].f)} › ${esc(E.prods[p[0]].s)}${D[p[0]] ? ' · 📍 ' + D[p[0]].join(', ') : ''}</div>` : ''}</td>
+  ${res.map(p => { const x = producto(p[0]); return `<tr><td style="white-space:nowrap">${esc(p[0])}</td><td>${badgeOrigen(p)} ${esc(x.desc)}<div style="margin-top:2px">${famBadge(String(p[0]))} ${famBtn(String(p[0]))}</div></td><td class="num"><b>${fmt(x.peso, 2)}</b></td><td><span class="tag ${x.conf}">${x.conf}</span>${est ? `<div class="muted" style="font-size:11px">${esc(E.prods[p[0]].f)} › ${esc(E.prods[p[0]].s)}${D[p[0]] ? ' · 📍 ' + D[p[0]].join(', ') : ''}</div>` : ''}</td>
   <td style="white-space:nowrap"><button class="b2" onclick="CALC.push({c:'${esc(p[0])}',q:1});pintarCalc()">+ Agregar al cálculo</button> ${USER.rol === 'admin' ? `<button class="b2" onclick="editarProd('${esc(p[0])}')">Corregir</button>` : ''}</td></tr>`; }).join('')}</tbody></table>`;
 }
 function pintarCalc(){
