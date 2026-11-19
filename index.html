@@ -1196,10 +1196,9 @@ function estUbRender(){
         : `<div><input id="estUbQ" placeholder="🔍 Buscar el producto en la base (código o palabras)" value="${esc(U.q)}" style="width:100%" oninput="EST_UB.q=this.value;estUbBusca()"><div id="estUbRes" style="max-height:200px;overflow:auto;margin-top:6px"></div></div>`}
       <div class="row" style="align-items:flex-end;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid #e5e7eb">
         <label>Casillero (escríbelo o tócalo abajo)<input id="estUbId" value="${esc(U.id)}" placeholder="ej: 4B.1, 9A.3, 12F" style="width:170px;text-transform:uppercase" oninput="EST_UB.id=this.value.toUpperCase();estUbSel(this.value.toUpperCase().trim())" onkeydown="if(event.key==='Enter')estUbPoner()"></label>
-        <label>Cantidad en el casillero (opcional)<input id="estUbCant" type="number" min="0" step="any" value="${esc(U.cant)}" style="width:150px" onkeydown="if(event.key==='Enter')estUbPoner()"></label>
         ${c && !mk ? `<label>Familia${selFS(fams, f, "estUbFS('f',this)")}</label><label>Subfamilia${selFS(subs, sb, "estUbFS('s',this)")}</label>` : ''}
         <button class="b" onclick="estUbPoner()" ${c ? '' : 'disabled'}>＋ Poner en este casillero</button></div>
-      <p class="muted" style="margin:6px 0">Doble clic en un casillero lo pone directo. Un producto puede estar en varios casilleros (repite). Si ya está en ese casillero, la cantidad se reemplaza.${c && !mk ? ' Es la primera vez que se ubica: elige su familia para el color del plano.' : ''}</p>
+      <p class="muted" style="margin:6px 0">Doble clic en un casillero lo pone directo. Un producto puede estar en varios casilleros (repite). Al ubicarlo, se limpia todo para buscar el siguiente.${c && !mk ? ' Es la primera vez que se ubica: elige su familia para el color del plano.' : ''}</p>
       <div class="row" style="gap:4px;flex-wrap:wrap;margin:8px 0 6px">${(() => { let a = 1; return e.tramos.map(tr => { const x = `<button class="${U.tab === tr.id ? 'b' : 'b2'}" onclick="estUbTab('${tr.id}')">${esc(tr.nombre)} <span style="font-weight:normal;font-size:11px">(col ${a}${tr.cols > 1 ? '–' + (a + tr.cols - 1) : ''})</span></button>`; a += tr.cols; return x; }).join(''); })()}</div>
       <div style="overflow-x:auto;padding-bottom:4px">${estMiniHTML(U.tab, U.id, c)}</div>
       <p class="muted" style="margin:6px 0 0"><span style="background:#f3f4f6;border:1px solid #9ca3af;padding:0 8px">&nbsp;</span> vacío &nbsp; <span style="background:#bbf7d0;border:1px solid #9ca3af;padding:0 8px">&nbsp;</span> tiene productos (el número es cuántos) &nbsp; <span style="background:#fde68a;border:1px solid #9ca3af;padding:0 8px">&nbsp;</span> ya está este producto &nbsp; <span style="border:3px solid #dc2626;padding:0 8px">&nbsp;</span> elegido. Arriba la fila A y abajo la F (piso).</p>
@@ -1215,17 +1214,14 @@ function estUbPoner(){
     const mm = raw.match(/^(\d+[A-F])(\d)$/);
     if (mm && cel.some(z => z.id === mm[1] + '.' + mm[2])) id = mm[1] + '.' + mm[2]; else return toast(`El casillero "${raw}" no existe (ej: 4B.1, 9A.3, 12F)`);
   }
-  const ct = String($('#estUbCant').value || '').trim().replace(',', '.'), q = ct === '' ? null : Number(ct);
-  if (q != null && (isNaN(q) || q < 0)) return toast('La cantidad no es válida');
   const c = U.c;
   if (!e.prods[c]){
     const f = U.f || 'Sin clasificar', sb = U.s || (estSubs(e, f)[0] || 'General'), d = estDesc(c), mm = d.match(/(\d+(?:[.,]\d+)?X\d+(?:[.,]\d+)?(?:X\d+(?:[.,]\d+)?)?)/i);
     e.prods[c] = { f, s: sb, lab: mm ? mm[1].toLowerCase() : d.slice(0, 16), n: e.sigN++ }; estColores(e, false);
   }
   const l = e.celdas[id] = e.celdas[id] || [], ya = l.includes(c); if (!ya) l.push(c);
-  if (q != null){ e.cant[id] = e.cant[id] || {}; e.cant[id][c] = q; }
   guardar(); toast(ya ? `Actualizado en ${id}` : `Ubicado en ${id}`);
-  U.id = id; U.cant = ''; U.tab = (cel.find(z => z.id === id) || {}).t || U.tab; estUbRender(); vEstanteria();
+  U.c = null; U.q = ''; U.id = ''; U.cant = ''; U.f = ''; U.s = ''; estUbRender(); vEstanteria();
 }
 function estCant(id, c, v){
   const e = S.estanteria, t = String(v).trim().replace(',', '.'); e.cant[id] = e.cant[id] || {};
