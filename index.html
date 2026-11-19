@@ -1232,6 +1232,30 @@ function estCant(id, c, v){
   if (t === '') delete e.cant[id][c]; else { const q = Number(t); if (isNaN(q) || q < 0){ toast('Cantidad no válida'); return vEstanteria(); } e.cant[id][c] = q; }
   if (!Object.keys(e.cant[id]).length) delete e.cant[id]; guardar(); vEstanteria();
 }
+function estConfHTML(){
+  const e = estInit(), fams = estFams(e);
+  return `<div class="grid2"><div><h4 style="margin:0 0 4px">Familias</h4><table><thead><tr><th>Color</th><th>Familia</th><th>Abrev.</th></tr></thead><tbody>
+      ${fams.map(f => `<tr><td><input type="color" value="${e.famCol[f]}" style="width:36px;padding:0" onchange="estColorEdit('f','${esc(f)}',this.value)"></td><td>${esc(f)}</td><td><input value="${esc(e.famAb[f])}" style="width:80px" onchange="estColorEdit('fa','${esc(f)}',this.value)"></td></tr>`).join('')}</tbody></table></div>
+    <div><h4 style="margin:0 0 4px">Subfamilias</h4><table><thead><tr><th>Color</th><th>Familia › Subfamilia</th><th>Abrev.</th></tr></thead><tbody>
+      ${[...new Set(Object.values(e.prods).map(p => subKey(p.f, p.s)))].sort().map(k => `<tr><td><input type="color" value="${e.subCol[k]}" style="width:36px;padding:0" onchange="estColorEdit('s','${esc(k)}',this.value)"></td><td>${esc(k.replace('|', ' › '))}</td><td><input value="${esc(e.subAb[k])}" style="width:80px" onchange="estColorEdit('sa','${esc(k)}',this.value)"></td></tr>`).join('')}</tbody></table></div></div>
+    <button class="b2" style="margin-top:8px" onclick="estRecolorear()">🎨 Regenerar colores automáticos</button>
+    <h4 style="margin:12px 0 4px">Medidas por grupo (de izquierda a derecha)</h4>
+    <table><thead><tr><th>Grupo</th><th>Columnas</th><th>Ancho columna (cm)</th><th>Alto de cada nivel en cm, de piso hacia arriba (F, E, D, C, B, A)</th></tr></thead><tbody>
+    ${e.tramos.map((t, i) => `<tr><td><span style="display:inline-block;width:12px;height:12px;background:${t.color};border:1px solid #555"></span> <input value="${esc(t.nombre)}" onchange="estTramoEdit(${i},'nombre',this.value)"></td><td>${t.cols}</td>
+      <td><input type="number" value="${t.ancho}" style="width:70px" onchange="estTramoEdit(${i},'ancho',this.value)"></td><td><input value="${t.niveles.join(', ')}" onchange="estTramoEdit(${i},'niveles',this.value)"></td></tr>`).join('')}</tbody></table>
+    <button class="b2" style="margin-top:8px" onclick="if(confirm('¿Restaurar las medidas de partida?')){S.estanteria.tramos=JSON.parse(JSON.stringify(EST_TRAMOS_DEF));guardar();vEstanteria()}">Restaurar medidas de partida</button>`;
+}
+function estConfAbrir(){
+  let m = $('#estConf');
+  if (!m){ m = document.createElement('div'); m.id = 'estConf'; document.body.appendChild(m);
+    m.style.cssText = 'position:fixed;inset:0;background:rgba(17,24,39,.55);z-index:95;display:flex;align-items:flex-start;justify-content:center;padding:20px 10px;overflow:auto';
+    m.onclick = ev => { if (ev.target === m) estConfCerrar(); };
+    document.addEventListener('keydown', estConfEsc); }
+  estConfRender();
+}
+function estConfRender(){ const m = $('#estConf'); if (!m) return; const sc = m.firstChild ? m.firstChild.scrollTop : 0; m.innerHTML = `<div style="background:#fff;border-radius:10px;max-width:1000px;width:100%;box-shadow:0 10px 30px #0006"><div class="row" style="padding:12px 16px;border-bottom:1px solid #e5e7eb;align-items:center"><h3 style="flex:1;margin:0;color:var(--az)">⚙ Colores, abreviaturas y medidas</h3><button class="b2" onclick="estConfCerrar()">Cerrar (Esc)</button></div><div style="padding:12px 16px">${estConfHTML()}</div></div>`; }
+function estConfEsc(ev){ if (ev.key === 'Escape') estConfCerrar(); }
+function estConfCerrar(){ const m = $('#estConf'); if (m) m.remove(); document.removeEventListener('keydown', estConfEsc); }
 function vEstanteriaHTML(){
   const e = estInit(), cel = estCeldas(), donde = estDonde(), modo = e.modo;
   const totalCol = e.tramos.reduce((a, t) => a + t.cols, 0), largo = e.tramos.reduce((a, t) => a + t.cols * t.ancho, 0);
@@ -1239,7 +1263,6 @@ function vEstanteriaHTML(){
   const usadas = cel.filter(c => (e.celdas[c.id] || []).length).length;
   const fams = estFams(e), asign = [...new Set(Object.values(e.celdas).flat())].filter(c => e.prods[c]);
   const huerf = Object.values(e.celdas).flat().filter(c => !e.prods[c]);
-  const lista = estFiltrar(e, EST_PF, donde);
   const colDe = p => modo === 'producto' ? p.col : modo === 'sub' ? e.subCol[subKey(p.f, p.s)] : e.famCol[p.f];
   const sw = col => `<span style="display:inline-block;width:14px;height:14px;background:${col};border:1px solid #555;vertical-align:-2px;border-radius:2px"></span>`;
   const aviso = EST_MOV ? `<b>↔ Moviendo ${esc(EST_MOV.c)} ${esc(estDesc(EST_MOV.c))} desde ${EST_MOV.desde}</b><span class="muted">→ toca el casillero de destino</span><span style="flex:1"></span><button class="b2" onclick="EST_MOV=null;vEstanteria()">Cancelar</button>` : '';
@@ -1271,40 +1294,15 @@ function vEstanteriaHTML(){
     <div id="estDet" style="margin-top:8px;border:2px solid #1F3864;border-radius:8px;padding:10px;background:#f8faff">${pDet}</div>
     ${asign.length ? `<div data-keep="ley" style="display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;margin-top:8px;max-height:110px;overflow:auto">${estLeyenda(e, modo, asign, false)}</div>` : ''}
     ${huerf.length ? `<p class="warn">Hay casilleros con productos que ya no están marcados (${[...new Set(huerf)].join(', ')}).</p>` : ''}`;
-  // ---- lista de productos de la estantería
-  const pLista = `<div class="row"><select onchange="EST_PF.f=this.value;EST_PF.s='';vEstanteria()">${selOpts(fams, EST_PF.f, 'Todas las familias')}</select>
-      <select onchange="EST_PF.s=this.value;vEstanteria()">${selOpts(estSubs(e, EST_PF.f), EST_PF.s, 'Todas las subfamilias')}</select>
-      <input id="estPQ" placeholder="🔍 Filtrar" value="${esc(EST_PF.q)}" oninput="EST_PF.q=this.value;estFiltroVivo(this,'estLst','estLstN')">
-      <label style="flex-direction:row;align-items:center;gap:4px;color:inherit;font-size:13px"><input type="checkbox" ${EST_PF.sin ? 'checked' : ''} onchange="EST_PF.sin=this.checked;vEstanteria()"> Solo sin ubicar</label></div>
-    <div class="muted" style="margin:4px 0" id="estLstN">${lista.length} de ${nProd} producto(s)${EST_PF.f || EST_PF.s || EST_PF.sin ? ' (filtrado)' : ''}</div>
-    <div data-keep="lista" style="max-height:420px;overflow:auto"><table><thead><tr><th>#</th><th>Color</th><th>Código</th><th>Descripción</th><th>Familia</th><th>Subfamilia</th><th>Etiqueta corta</th><th>Dónde está (cantidad)</th><th></th></tr></thead><tbody id="estLst">
-    ${lista.map(([c, p]) => `<tr data-txt="${esc(norm(c + ' ' + estDesc(c) + ' ' + p.lab))}" ondblclick="estUbAbrir('${esc(c)}')"><td>${p.n}</td><td><input type="color" value="${p.col}" style="width:36px;padding:0" onchange="estProdEdit('${esc(c)}','col',this.value)"></td><td>${esc(c)}</td><td>${esc(estDesc(c))}</td>
-      <td>${selFS(fams, p.f, `estProdFS('${esc(c)}','f',this)`)}</td><td>${selFS(estSubs(e, p.f), p.s, `estProdFS('${esc(c)}','s',this)`)}</td>
-      <td><input value="${esc(p.lab)}" style="min-width:110px" onchange="estProdEdit('${esc(c)}','lab',this.value)"></td><td>${estChips(c, donde) || '<span class="muted">—</span>'}</td>
-      <td style="white-space:nowrap"><button class="b2" title="Ubicar" onclick="estUbAbrir('${esc(c)}')">📍</button> <button class="b2" title="Quitar de la estantería" onclick="estDesmarcar('${esc(c)}')">✕</button></td></tr>`).join('')}</tbody></table></div>`;
-  // ---- colores y medidas
-  const pConf = `<div class="grid2"><div><h4 style="margin:0 0 4px">Familias</h4><table><thead><tr><th>Color</th><th>Familia</th><th>Abrev.</th></tr></thead><tbody>
-      ${fams.map(f => `<tr><td><input type="color" value="${e.famCol[f]}" style="width:36px;padding:0" onchange="estColorEdit('f','${esc(f)}',this.value)"></td><td>${esc(f)}</td><td><input value="${esc(e.famAb[f])}" style="width:80px" onchange="estColorEdit('fa','${esc(f)}',this.value)"></td></tr>`).join('')}</tbody></table></div>
-    <div><h4 style="margin:0 0 4px">Subfamilias</h4><table><thead><tr><th>Color</th><th>Familia › Subfamilia</th><th>Abrev.</th></tr></thead><tbody>
-      ${[...new Set(Object.values(e.prods).map(p => subKey(p.f, p.s)))].sort().map(k => `<tr><td><input type="color" value="${e.subCol[k]}" style="width:36px;padding:0" onchange="estColorEdit('s','${esc(k)}',this.value)"></td><td>${esc(k.replace('|', ' › '))}</td><td><input value="${esc(e.subAb[k])}" style="width:80px" onchange="estColorEdit('sa','${esc(k)}',this.value)"></td></tr>`).join('')}</tbody></table></div></div>
-    <button class="b2" style="margin-top:8px" onclick="estRecolorear()">🎨 Regenerar colores automáticos</button>
-    <h4 style="margin:12px 0 4px">Medidas por grupo (de izquierda a derecha)</h4>
-    <table><thead><tr><th>Grupo</th><th>Columnas</th><th>Ancho columna (cm)</th><th>Alto de cada nivel en cm, de piso hacia arriba (F, E, D, C, B, A)</th></tr></thead><tbody>
-    ${e.tramos.map((t, i) => `<tr><td><span style="display:inline-block;width:12px;height:12px;background:${t.color};border:1px solid #555"></span> <input value="${esc(t.nombre)}" onchange="estTramoEdit(${i},'nombre',this.value)"></td><td>${t.cols}</td>
-      <td><input type="number" value="${t.ancho}" style="width:70px" onchange="estTramoEdit(${i},'ancho',this.value)"></td><td><input value="${t.niveles.join(', ')}" onchange="estTramoEdit(${i},'niveles',this.value)"></td></tr>`).join('')}</tbody></table>
-    <button class="b2" style="margin-top:8px" onclick="if(confirm('¿Restaurar las medidas de partida?')){S.estanteria.tramos=JSON.parse(JSON.stringify(EST_TRAMOS_DEF));guardar();vEstanteria()}">Restaurar medidas de partida</button>`;
   const kp = (t, v, x) => `<div class="card" style="margin:0;padding:6px 12px"><div class="muted">${t}</div><b style="font-size:18px">${v}</b>${x || ''}</div>`;
   $('#main').innerHTML = `<div class="row noprint" style="margin-bottom:8px;gap:6px;align-items:center;flex-wrap:wrap"><span style="font-weight:bold;color:var(--az);font-size:18px;flex:1">🗄 Estantería</span>
       ${kp('Productos ubicados', ubic)}${kp('Casilleros usados / libres', `${usadas} / ${cel.length - usadas}`, ` <span class="muted">(${totalCol} col · ${(largo / 100).toFixed(2).replace('.', ',')} m)</span>`)}
-      <button class="b2" onclick="estModalEtq(false)">🏷 Etiquetas</button><button class="b2" onclick="estLimpiar()">🧹 Limpiar</button><button class="b" onclick="estDlgImprimir()">🖨 Imprimir</button></div>
+      <button class="b2" onclick="estModalEtq(false)">🏷 Etiquetas</button><button class="b2" onclick="estConfAbrir()">⚙ Colores y medidas</button><button class="b2" onclick="estLimpiar()">🧹 Limpiar</button><button class="b" onclick="estDlgImprimir()">🖨 Imprimir</button></div>
     <div id="estImpBox"></div>
-    <div class="card"><h3 style="margin:0 0 8px;color:var(--az)">🔎 Productos de la base</h3>${pBusca}</div>
-    <div class="card"><h3 style="margin:0 0 8px;color:var(--az)">🗺 Plano de la estantería</h3>${pPlano}</div>
-    ${panel('lista', `📋 Productos con ficha en la estantería (${nProd})`, pLista)}
-    ${panel('conf', '⚙ Colores, abreviaturas y medidas', pConf)}
+    <div class="card"><h3 style="margin:0 0 8px;color:var(--az)">🗺 Estantería</h3>${pPlano}</div>
+    <div class="card"><h3 style="margin:0 0 8px;color:var(--az)">🔎 Buscador de productos</h3>${pBusca}</div>
     ${aviso ? `<div style="position:fixed;bottom:14px;left:50%;transform:translateX(-50%);z-index:50;max-width:92vw;box-shadow:0 4px 14px #0004;background:#fff3c4;border:2px solid #d4a017;border-radius:8px;padding:8px 12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">${aviso}</div>` : ''}`;
-  estBRes();
-  if (EST_PF.q){ const i = $('#estPQ'); if (i) estFiltroVivo(i, 'estLst', 'estLstN'); }
+  estBRes(); if ($('#estConf')) estConfRender();
 }
 /* ---- Etiquetas para impresora térmica de 80 mm ---- */
 let EST_ETQ_CANT = 1, EST_ETQ_CONF = false, EST_ETQ = {}, EST_EF = { q: '', f: '', s: '', col: '', niv: '', solo: false };
