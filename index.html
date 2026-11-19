@@ -837,13 +837,23 @@ function imprimirRevision(id){
 
 /* ===================== ESTANTERÍA (productos marcados + asignación manual por casillero) ===================== */
 const EST_DEF = [["71001","Perfiles metalicos","Perfiles abiertos","L 20x20x2"],["106025808","Perfiles metalicos","Perfiles abiertos","L 20x20x3 lam"],["71025","Perfiles metalicos","Perfiles abiertos","L 20x20x3"],["70906","Perfiles metalicos","Perfil rectangular","▭ 25x15x1.5"],["4061-3000","Vulcometal","Metalcon","Esq 25x25 2.4m"],["264002","Vulcometal","Metalcon","Esq 25x25 3m"],["71002","Perfiles metalicos","Perfiles abiertos","L 25x25x2"],["71013","Perfiles metalicos","Perfiles abiertos","L 25x25x3 lam"],["71009","Perfiles metalicos","Perfiles abiertos","L 25x25x3"],["71017","Perfiles metalicos","Perfiles abiertos","L 25x25x5 lam"],["4060-3000","Vulcometal","Metalcon","Esq 30x30 3m"],["71003","Perfiles metalicos","Perfiles abiertos","L 30x30x2"],["71008","Perfiles metalicos","Perfiles abiertos","L 30x30x3 lam"],["71007","Perfiles metalicos","Perfiles abiertos","L 30x30x3"],["3607","Perfiles metalicos","Perfiles abiertos","L 30x30x4"],["71023","Perfiles metalicos","Perfiles abiertos","L 30x30x5 lam"],["71005","Perfiles metalicos","Perfiles abiertos","L 40x40x2"],["71012","Perfiles metalicos","Perfiles abiertos","L 40x40x3 lam"],["71004","Perfiles metalicos","Perfiles abiertos","L 40x40x3"],["72004","Perfiles metalicos","Perfiles abiertos","L 40x40x4 lam"],["70529","Perfiles metalicos","Perfiles abiertos","L 40x40x4"],["401577","Perfiles metalicos","Perfiles abiertos","L 40x40x5 lam"],["71006","Perfiles metalicos","Perfiles abiertos","L 50x50x2"],["71016","Perfiles metalicos","Perfiles abiertos","L 50x50x3 lam"],["71014","Perfiles metalicos","Perfiles abiertos","L 50x50x3"],["72014","Perfiles metalicos","Perfiles abiertos","L 50x50x4 lam"],["71015","Perfiles metalicos","Perfiles abiertos","L 50x50x5 lam"],["71010","Perfiles metalicos","Perfiles abiertos","L 50x50x5"],["65654","Perfiles metalicos","Perfiles abiertos","L 65x65x4"],["7798146643610","Perfiles metalicos","Perfiles abiertos","L 19.5x19.5"],["70914","Perfiles metalicos","Perfil rectangular","▭ 100x50x2"],["70924","Perfiles metalicos","Perfil rectangular","▭ 100x50x3"],["7092424","Perfiles metalicos","Perfil rectangular","▭ 100x50x5"],["70930","Perfiles metalicos","Perfil rectangular","▭ 150x100x4"],["948220","Perfiles metalicos","Perfil rectangular","▭ 150x50x2"],["70912","Perfiles metalicos","Perfil rectangular","▭ 150x50x3"],["1857","Perfiles metalicos","Perfil rectangular","▭ 150x50x5"],["70850","Perfiles metalicos","Perfil rectangular","▭ 200x100x4"],["2704","Perfiles metalicos","Perfil rectangular","▭ 20x10x1.5"],["12584","Perfiles metalicos","Perfil rectangular","▭ 25x15x1.0"],["70950","Perfiles metalicos","Perfil rectangular","▭ 30x20x1.5"],["70904","Perfiles metalicos","Perfil rectangular","▭ 30x20x2"],["70902","Perfiles metalicos","Perfil rectangular","▭ 40x20x1.5"],["70903","Perfiles metalicos","Perfil rectangular","▭ 40x20x2"],["70908","Perfiles metalicos","Perfil rectangular","▭ 40x30x1.5"],["70907","Perfiles metalicos","Perfil rectangular","▭ 40x30x2"],["3400006","Perfiles metalicos","Perfil rectangular","▭ 50x20x1.5"],["70915","Perfiles metalicos","Perfil rectangular","▭ 50x20x2"],["34000108","Perfiles metalicos","Perfil rectangular","▭ 50x30x1.5"],["70916","Perfiles metalicos","Perfil rectangular","▭ 50x30x2"],["70920","Perfiles metalicos","Perfil rectangular","▭ 50x30x3"],["70909","Perfiles metalicos","Perfil rectangular","▭ 60x40x2"],["709099","Perfiles metalicos","Perfil rectangular","▭ 60x40x3"],["70910","Perfiles metalicos","Perfil rectangular","▭ 80x40x2"],["709011","Perfiles metalicos","Perfil rectangular","▭ 80x40x3"],["70522","Perfiles metalicos","Perfil cuadrado","□ 100x100x2"],["70515","Perfiles metalicos","Perfil cuadrado","□ 100x100x3"],["70506","Perfiles metalicos","Perfil cuadrado","□ 100x100x4"],["70555","Perfiles metalicos","Perfil cuadrado","□ 100x100x5"],["70801","Perfiles metalicos","Masiso cuadrado","Cuad 10mm"],["70802","Perfiles metalicos","Masiso cuadrado","Cuad 12mm"],["70803","Perfiles metalicos","Masiso cuadrado","Cuad 14mm"],["70509","Perfiles metalicos","Perfil cuadrado","□ 15x15x1.5"],["70804","Perfiles metalicos","Masiso cuadrado","Cuad 16mm"],["70501","Perfiles metalicos","Perfil cuadrado","□ 20x20x1.5"],["70508","Perfiles metalicos","Perfil cuadrado","□ 20x20x2"],["70510","Perfiles metalicos","Perfil cuadrado","□ 25x25x1.5"],["70516","Perfiles metalicos","Perfil cuadrado","□ 25x25x2"],["70502","Perfiles metalicos","Perfil cuadrado","□ 30x30x1.5"],["70518","Perfiles metalicos","Perfil cuadrado","□ 30x30x2"],["70503","Perfiles metalicos","Perfil cuadrado","□ 40x40x1.5"],["70517","Perfiles metalicos","Perfil cuadrado","□ 40x40x2"],["70507","Perfiles metalicos","Perfil cuadrado","□ 40x40x3"],["70504","Perfiles metalicos","Perfil cuadrado","□ 50x50x1.5"],["70512","Perfiles metalicos","Perfil cuadrado","□ 50x50x2"],["70511","Perfiles metalicos","Perfil cuadrado","□ 50x50x3"],["70513","Perfiles metalicos","Perfil cuadrado","□ 75x75x2"],["70514","Perfiles metalicos","Perfil cuadrado","□ 75x75x3"],["11177","Perfiles metalicos","Perfil cuadrado","□ 75x75x5"],["50410","Molduras","Madera","Jq 1x1"],["50403","Molduras","Madera","Jq 3/4"],["2036308","PVC","Sanitario","San U 40mm 6m bl"],["7805502004524","PVC","Electrico","Cond 16mm 3m"],["460320","PVC","Electrico","Cond 16mm 6m"],["7805502004555","PVC","Electrico","Cond 20mm 3m"],["460310","PVC","Electrico","Cond 20mm 6m"],["7805502004562","PVC","Electrico","Cond 25mm 3m"],["460317","PVC","Electrico","Cond 25mm 6m"],["7805502004579","PVC","Electrico","Cond 32mm 3m"],["460311","PVC","Electrico","Cond 32mm 6m"],["7805502183403","PVC","Electrico","Cond 40mm 3m"],["460354","PVC","Electrico","Cond 40mm 6m"],["7805502183519","PVC","Electrico","Cond 50mm 3m"],["4603545","PVC","Electrico","Cond 50mm 6m"],["41325","PVC","Electrico","Cond 75mm 6m"],["41326","PVC","Electrico","Cond 90mm 6m"],["5829161101","PVC","Hidraulico","Hid 110mm 6m"],["7806179451208","PVC","Hidraulico","Hid 20mm 3m"],["401501","PVC","Hidraulico","Hid 20mm 6m"],["7806179451215","PVC","Hidraulico","Hid 25mm 3m"],["45060","PVC","Hidraulico","Hid 25mm 6m"],["7806179451222","PVC","Hidraulico","Hid 32mm 3m"],["401503","PVC","Hidraulico","Hid 32mm 6m"],["7806179451239","PVC","Hidraulico","Hid 40mm 3m"],["5825160401","PVC","Hidraulico","Hid 40mm 6m"],["7806179451246","PVC","Hidraulico","Hid 50mm 3m"],["401504","PVC","Hidraulico","Hid 50mm 6m"],["401507","PVC","Hidraulico","Hid 63mm 6m"],["401509","PVC","Hidraulico","Hid 75mm 6m"],["5829160902","PVC","Hidraulico","Hid 90mm 6m"],["7805502031100","PVC","Sanitario","San 110mm 3m"],["80108","PVC","Sanitario","San 110mm 6m"],["5803661601","PVC","Sanitario","San 160mm 6m bl"],["7805502030400","PVC","Sanitario","San 40mm 3m"],["5803660401","PVC","Sanitario","San 40mm 6m bl"],["14005NN","PVC","Sanitario","San 40mm 6m bl"],["80105","PVC","Sanitario","San 40mm 6m"],["7805502030509","PVC","Sanitario","San 50mm 3m"],["5803660508","PVC","Sanitario","San 50mm 6m bl"],["14006NN","PVC","Sanitario","San 50mm 6m bl"],["80106","PVC","Sanitario","San 50mm 6m"],["7805502030752","PVC","Sanitario","San 75mm 3m"],["80107","PVC","Sanitario","San 75mm 6m"],["14016NN","PVC","Sanitario","San U 160mm 6m bl"],["41467","PVC","Sanitario","San U 110mm 3m"],["41464","PVC","Sanitario","San U 40mm 3m"],["41465","PVC","Sanitario","San U 50mm 3m"],["41466","PVC","Sanitario","San U 75mm 3m"],["2036319","PVC","Sanitario","San U 50mm 6m bl"],["41463","PVC","Sanitario","San U 110mm 6m"],["41460","PVC","Sanitario","San U 40mm 6m"],["41461","PVC","Sanitario","San U 50mm 6m"],["41462","PVC","Sanitario","San U 75mm 6m"],["7809621000306","Vulcometal","Metalcon","C 2x3 2.4m"],["224014-2.5","Vulcometal","Metalcon","C 2x4 2.5m"],["7809621000832","Vulcometal","Metalcon","Cielo AT 20x25 3m"],["36000120","Vulcometal","Metalcon","C 2x3 3m"],["264001","Vulcometal","Metalcon","Esq 30x30 2.4m"],["7809621000122","Vulcometal","Metalcon","Mont 38 2.4m"],["4001-3000","Vulcometal","Metalcon","Mont 38 3m"],["7809621000214","Vulcometal","Metalcon","Canal 39 3m"],["4020-3000","Vulcometal","Metalcon","C 2x2 3m"],["40143000","Vulcometal","Metalcon","C 2x4 3m"],["224037-3","Vulcometal","Metalcon","U 2x3 3m"],["40383000","Vulcometal","Metalcon","U 2x4 3m"],["7809621000795","Vulcometal","Metalcon","Canal 40 3m"],["4086","Vulcometal","Metalcon","Canal 40 6m"],["4021-4000","Vulcometal","Metalcon","C 2x4 4m"],["30002400","Vulcometal","Metalcon","Mont 60 2.4m"],["4003-3000","Vulcometal","Metalcon","Mont 60 3m"],["7809621000191","Vulcometal","Metalcon","Canal 61 3m"],["7809621000719","Vulcometal","Metalcon","C 2x2 6m"],["40136000","Vulcometal","Metalcon","C 2x3 6m"],["40216000","Vulcometal","Metalcon","C 2x4 6m"],["4017","Vulcometal","Metalcon","C 2x5 6m"],["4027-6","Vulcometal","Metalcon","C 2x6 6m"],["7809621000450","Vulcometal","Metalcon","C 2x8 6m"],["4020-3001","Vulcometal","Metalcon","U 2x2 6m"],["4037","Vulcometal","Metalcon","U 2x3 6m"],["40386000","Vulcometal","Metalcon","U 2x4 6m"],["4042","Vulcometal","Metalcon","U 2x5 6m"],["40446000","Vulcometal","Metalcon","U 2x6 6m"],["224046","Vulcometal","Metalcon","U 2x8 6m"],["7809621000818","Vulcometal","Metalcon","Omega"],["7809621040944","Vulcometal","Metalcon","Omega eco"],["70600","Perfiles metalicos","Perfiles abiertos","U 100x50x5"],["70607","Perfiles metalicos","Perfiles abiertos","U 125x50x2"],["70608","Perfiles metalicos","Perfiles abiertos","U 125x50x3"],["70609","Perfiles metalicos","Perfiles abiertos","U 150x50x3"],["43000036","Perfiles metalicos","Perfiles abiertos","U 150x50x4"],["70612","Perfiles metalicos","Perfiles abiertos","U 200x50x2"],["70610","Perfiles metalicos","Perfiles abiertos","U 200x50x3"],["70613","Perfiles metalicos","Perfiles abiertos","U 200x50x4"],["250505","Perfiles metalicos","Perfiles abiertos","U 250x50x5"],["250506","Perfiles metalicos","Perfiles abiertos","U 250x75x4"],["70603","Perfiles metalicos","Perfiles abiertos","U 50x25x2"],["70604","Perfiles metalicos","Perfiles abiertos","U 50x25x3"],["70601","Perfiles metalicos","Perfiles abiertos","U 80x40x2"],["70605","Perfiles metalicos","Perfiles abiertos","U 80x40x3"],["71102","Perfiles metalicos","Perfiles abiertos","C 100x50x15x2"],["71105","Perfiles metalicos","Perfiles abiertos","C 100x50x15x3"],["71103","Perfiles metalicos","Perfiles abiertos","C 125x50x15x2"],["43000056","Perfiles metalicos","Perfiles abiertos","C 125x50x15x3"],["43000057","Perfiles metalicos","Perfiles abiertos","C 150x50x15x2"],["71111","Perfiles metalicos","Perfiles abiertos","C 150x50x15x3"],["71110","Perfiles metalicos","Perfiles abiertos","C 150x75x15x3"],["33399","Perfiles metalicos","Perfiles abiertos","C 200x50x15x2"],["71107","Perfiles metalicos","Perfiles abiertos","C 200x50x15x3"],["71101","Perfiles metalicos","Perfiles abiertos","C 80x40x15x2"],["71104","Perfiles metalicos","Perfiles abiertos","C 80x40x15x3"],["2035079","PPR","PPR","PPR 20mm 3m PN16"],["1500127","PPR","PPR","PPR 20mm 6m PN16"],["2029654","PPR","PPR","PPR 20mm 6m PN20"],["2035081","PPR","PPR","PPR 25mm 3m PN16"],["1500128","PPR","PPR","PPR 25mm 6m PN16"],["2029657","PPR","PPR","PPR 25mm 6m PN20"],["2035083","PPR","PPR","PPR 32mm 3m PN16"],["2029659","PPR","PPR","PPR 32mm 6m PN16"],["1500130","PPR","PPR","PPR 40mm 3m PN16"],["2035109","PPR","PPR","PPR 40mm 6m PN16"],["2029670","PPR","PPR","PPR 50mm 3m PN20"],["1500131","PPR","PPR","PPR 50mm 6m PN16"],["1500140","PPR","PPR","PPR 50mm 6m PN20"],["5879990636","PPR","PPR","PPR 63mm 6m PN20"],["2029664","PPR","PPR","PPR 75mm 6m PN20"]]; // [codigo, familia, subfamilia, etiqueta corta] — hoja 2 de estanteria.xlsx
-// Medidas del Excel estanteria.xlsx: cada fila = 10 cm de alto; ancho de columna ×10 = cm (7,14 → 71 cm; 3,29 → 33 cm). Niveles de piso hacia arriba.
+// Distribución definitiva (estanteria.xlsx, hoja 3): 30 columnas en 6 grupos. Casillero = columna + nivel (A arriba … F piso) + .parte si el nivel está dividido. Ej: 4B.1, 9A.3, 12F.
+// Alto de cada nivel y ancho de columna: valores de partida editables en Colores y medidas (el Excel no trae medidas reales).
 const EST_TRAMOS_DEF = [
-  { id: 'A', nombre: 'Amarillo izquierdo', color: '#FFE600', cols: 8, ancho: 71, niveles: [50, 30, 80, 40, 40] },
-  { id: 'V', nombre: 'Verde', color: '#92D050', cols: 2, ancho: 33, niveles: [50, 30, 40, 40, 40, 40] },
-  { id: 'N', nombre: 'Naranjo', color: '#FFC000', cols: 14, ancho: 71, niveles: [50, 30, 40, 40, 40, 40] },
-  { id: 'D', nombre: 'Amarillo derecho', color: '#FFE600', cols: 7, ancho: 71, niveles: [50, 30, 80, 40, 40] }
+  { id: 'G1', nombre: 'Grupo 1', color: '#FFC7CE', cols: 3, ancho: 71, niveles: [50, 40, 40, 40, 40, 40] },
+  { id: 'G2', nombre: 'Grupo 2', color: '#FFEB9C', cols: 5, ancho: 71, niveles: [50, 40, 40, 40, 40, 40] },
+  { id: 'G3', nombre: 'Grupo 3', color: '#C6EFCE', cols: 1, ancho: 71, niveles: [50, 40, 40, 40, 40, 40] },
+  { id: 'G4', nombre: 'Grupo 4', color: '#BDD7EE', cols: 5, ancho: 71, niveles: [50, 40, 40, 40, 40, 40] },
+  { id: 'G5', nombre: 'Grupo 5', color: '#E4DFEC', cols: 9, ancho: 71, niveles: [50, 40, 40, 40, 40, 40] },
+  { id: 'G6', nombre: 'Grupo 6', color: '#F8CBAD', cols: 7, ancho: 71, niveles: [50, 40, 40, 40, 40, 40] }
 ];
+// Filas de arriba hacia abajo: l = letra del casillero, ls = niveles que ocupa (alturas), sub = partes en que se divide
+const EST_FILAS = (() => {
+  const F = (...sub) => ['A', 'B', 'C', 'D', 'E', 'F'].map((l, i) => ({ l, ls: [l], sub: sub[i] }));
+  const g6 = F(1, 2, 2, 2, 2, 1); g6.splice(2, 2, { l: 'C', ls: ['C', 'D'], sub: 2 });
+  return { G1: F(1, 1, 1, 1, 1, 1), G2: F(1, 2, 2, 2, 2, 1), G3: F(4, 4, 4, 4, 4, 1), G4: F(1, 2, 2, 2, 2, 2), G5: F(1, 2, 2, 2, 2, 1), G6: g6 };
+})();
+const estKey = id => String(id).replace(/^\d+/, m => m.padStart(2, '0'));
 const EST_HUES = [212, 150, 28, 352, 275, 48, 190, 110, 320, 0, 240, 80];
 let EST_SEL = [], EST_MODO = null, EST_BUS = '', EST_PF = { q: '', f: '', s: '', sin: false }, EST_AF = { q: '', f: '', s: '', sin: true, sig: true }, EST_ACT = null, EST_MOV = null, EST_NF = '', EST_NS = '';
 let EST_OPEN = { plano: true, agregar: true, det: true, lista: false, conf: false };
@@ -869,7 +879,8 @@ function estColores(e, forzar){ // colores automáticos: familia = tono, subfami
 }
 function estInit(){
   const e = S.estanteria = S.estanteria || {};
-  if (e.version !== 3){ const t = e.tramos; Object.keys(e).forEach(k => delete e[k]); e.version = 3; if (t) e.tramos = t; }
+  if (e.version !== 3 && e.version !== 4){ Object.keys(e).forEach(k => delete e[k]); e.version = 3; }
+  if (e.version === 3){ e.celdas = {}; delete e.tramos; e.version = 4; } // distribución nueva: se parte sin materiales asignados
   if (!e.tramos) e.tramos = JSON.parse(JSON.stringify(EST_TRAMOS_DEF));
   e.famCol = e.famCol || {}; e.subCol = e.subCol || {}; e.famAb = e.famAb || {}; e.subAb = e.subAb || {}; e.celdas = e.celdas || {};
   if (!e.prods){ e.prods = {}; EST_DEF.forEach(([c, f, s, lab], i) => { if (!e.prods[c]) e.prods[c] = { f, s, lab, n: i + 1 }; }); e.sigN = EST_DEF.length + 1; }
@@ -880,9 +891,14 @@ function estInit(){
 function estCeldas(){
   const e = estInit(), cel = []; let col = 0, x = 0;
   e.tramos.forEach(t => {
+    const filas = EST_FILAS[t.id] || [], hl = {}; ['A', 'B', 'C', 'D', 'E', 'F'].forEach((l, i) => hl[l] = t.niveles[5 - i] || 40);
     for (let i = 0; i < t.cols; i++){
-      col++; let y = 0;
-      t.niveles.forEach((h, j) => { cel.push({ id: pad2(col) + '-' + (j + 1), col, niv: j + 1, t: t.id, x, w: t.ancho, y, h }); y += h; });
+      col++; let y = 0, niv = 0;
+      for (let k = filas.length - 1; k >= 0; k--){
+        const f = filas[k], h = f.ls.reduce((a, l) => a + hl[l], 0); niv += f.ls.length;
+        for (let q = 0; q < f.sub; q++) cel.push({ id: col + f.l + (f.sub > 1 ? '.' + (q + 1) : ''), col, niv, letra: f.l, ls: f.ls, sub: q + 1, nsub: f.sub, t: t.id, x: x + q * t.ancho / f.sub, w: t.ancho / f.sub, y, h });
+        y += h;
+      }
       x += t.ancho;
     }
   });
@@ -890,7 +906,7 @@ function estCeldas(){
 }
 const PROD_MAP = (() => { const m = {}; PRODUCTOS.forEach(p => m[String(p[0])] = p); return m; })();
 const estDesc = c => PROD_MAP[c] ? PROD_MAP[c][1] : '(no está en la base)';
-function estDonde(){ const e = estInit(), d = {}; Object.entries(e.celdas).forEach(([id, l]) => l.forEach(c => (d[c] = d[c] || []).push(id))); Object.values(d).forEach(a => a.sort()); return d; }
+function estDonde(){ const e = estInit(), d = {}; Object.entries(e.celdas).forEach(([id, l]) => l.forEach(c => (d[c] = d[c] || []).push(id))); Object.values(d).forEach(a => a.sort((x, y) => estKey(x).localeCompare(estKey(y)))); return d; }
 function estGrupo(c, modo){ // devuelve [clave, color, texto corto, texto largo] según el modo de color
   const e = S.estanteria, p = e.prods[c];
   if (!p) return ['?', '#ddd', '?', c];
@@ -907,14 +923,14 @@ function estSVG(desde, hasta, o){
   const W = izq + (x1 - x0) * SX + 10, alto = top + H * K + 34;
   const Y = cm => top + (H - cm) * K, X = cm => izq + (cm - x0) * SX;
   let s = `<svg viewBox="0 0 ${W} ${alto}" ${o.imp ? `style="width:100%;height:${o.h || 86}mm;display:block" preserveAspectRatio="xMidYMin meet"` : `width="${W}" height="${alto}"`} xmlns="http://www.w3.org/2000/svg" font-family="Arial,sans-serif">`;
-  let col = 0, xc = 0;
+  let col = 0, xc = 0, labN = false;
   e.tramos.forEach(t => {
     const ini = col + 1, fin = col + t.cols, xi = xc; col = fin; xc += t.cols * t.ancho;
     const a = Math.max(ini, desde), b = Math.min(fin, hasta); if (a > b) return;
     const xa = X(xi + (a - ini) * t.ancho), xb = X(xi + (b - ini + 1) * t.ancho);
     const larg = `${t.nombre} · ${t.cols} col × ${t.ancho} cm`, txt = (xb - xa) > larg.length * 6.8 ? larg : (xb - xa) > t.nombre.length * 7 ? t.nombre : t.nombre[0];
     s += `<rect x="${xa}" y="2" width="${xb - xa}" height="20" fill="${bn ? '#fff' : t.color}" stroke="#555"/><text x="${(xa + xb) / 2}" y="16" font-size="12" text-anchor="middle" font-weight="bold">${esc(txt)}</text>`;
-    if (a === ini){ let y = 0; t.niveles.forEach((h, j) => { s += `<text x="${xa - 3}" y="${Y(y + h / 2) + 4}" font-size="10" text-anchor="end" fill="#333">N${j + 1}·${h}</text>`; y += h; }); }
+    if (!labN){ labN = true; let y = 0; t.niveles.forEach((h, j) => { s += `<text x="${xa - 3}" y="${Y(y + h / 2) + 4}" font-size="10" text-anchor="end" fill="#333">${'FEDCBA'[j]}·${h}</text>`; y += h; }); }
   });
   const q = norm(EST_BUS);
   cs.forEach(c => {
@@ -945,7 +961,7 @@ function estSVG(desde, hasta, o){
   });
   s += `<line x1="${izq - 4}" y1="${Y(0)}" x2="${W - 4}" y2="${Y(0)}" stroke="#000" stroke-width="2"/>`;
   [...new Set(cs.map(c => c.col))].forEach(cn => { const c = cs.find(z => z.col === cn); s += `<text x="${X(c.x + c.w / 2)}" y="${Y(0) + 14}" font-size="11" text-anchor="middle" font-weight="bold">${cn}</text>`; });
-  s += `<text x="${izq}" y="${Y(0) + 29}" font-size="10" fill="#444">Vista de frente · casillero = columna-nivel (nivel 1 = piso) · alturas en cm · ${modo === 'producto' ? '#n = número del producto (ver listado)' : modo === 'sub' ? 'coloreado por subfamilia' : 'coloreado por familia'}</text></svg>`;
+  s += `<text x="${izq}" y="${Y(0) + 29}" font-size="10" fill="#444">Vista de frente · casillero = columna + nivel (A arriba … F piso) + parte · alturas en cm · ${modo === 'producto' ? '#n = número del producto (ver listado)' : modo === 'sub' ? 'coloreado por subfamilia' : 'coloreado por familia'}</text></svg>`;
   return s;
 }
 function estClic(ev, id){
@@ -1071,7 +1087,7 @@ function estColorEdit(tipo, k, v){ const e = S.estanteria; if (tipo === 'f') e.f
 function estRecolorear(){ if (!confirm('¿Volver a generar todos los colores automáticamente?')) return; estColores(S.estanteria, true); guardar(); vEstanteria(); }
 function estTramoEdit(i, k, v){
   const t = S.estanteria.tramos[i];
-  if (k === 'niveles'){ const a = String(v).split(/[^0-9.]+/).map(Number).filter(x => x > 0); if (!a.length) return toast('Escribe las alturas en cm, de piso hacia arriba, ej: 50,30,80,40,40'); t.niveles = a; }
+  if (k === 'niveles'){ const a = String(v).split(/[^0-9.]+/).map(Number).filter(x => x > 0); if (!a.length) return toast('Escribe las alturas en cm, de piso hacia arriba, ej: 50,40,40,40,40,40'); if (a.length !== 6) return toast('Son 6 niveles: F, E, D, C, B, A (de piso hacia arriba)'); t.niveles = a; }
   else if (k === 'nombre') t.nombre = v; else t[k] = Math.max(1, n(v, t[k]));
   guardar(); vEstanteria();
 }
@@ -1146,7 +1162,7 @@ function vEstanteriaHTML(){
   let pDet = '';
   if (EST_SEL.length){
     const c1 = EST_SEL.length === 1 ? cel.find(z => z.id === EST_SEL[0]) : null;
-    const tit = c1 ? `📦 Casillero ${c1.id} — columna ${c1.col}, nivel ${c1.niv}${c1.niv === 1 ? ' (piso)' : ''} · ${c1.w}×${c1.h} cm` : `📦 ${EST_SEL.length} casilleros: ${EST_SEL.join(', ')}`;
+    const tit = c1 ? `📦 Casillero ${c1.id} — columna ${c1.col}, nivel ${c1.ls.join('+')}${c1.ls.includes('F') ? ' (piso)' : ''}${c1.nsub > 1 ? ` · parte ${c1.sub} de ${c1.nsub}` : ''} · ${Math.round(c1.w)}×${c1.h} cm` : `📦 ${EST_SEL.length} casilleros: ${EST_SEL.join(', ')}`;
     pDet = panel('det', tit, `<div class="row" style="margin-bottom:6px">${selCods.length ? `<button class="b2" onclick="estModalEtq(true)">🏷 Etiquetas de ${EST_SEL.length === 1 ? 'este casillero' : 'estos casilleros'}</button><button class="b2" onclick="estVaciar()">Vaciar</button>` : ''}<button class="b2" onclick="EST_SEL=[];vEstanteria()">Quitar selección</button></div>
       ${c1 && selCods.length ? `<table><thead><tr><th>Orden</th><th></th><th>Producto</th><th>Familia › Subfamilia</th><th>También en</th><th>Acciones</th></tr></thead><tbody>
         ${selCods.map((c, i) => { const p = e.prods[c] || { f: '?', s: '?', n: '?', col: '#ddd' }; return `<tr ${EST_MOV && EST_MOV.c === c ? 'style="background:#fff3c4"' : ''}><td style="white-space:nowrap"><button class="b2" title="Más a la izquierda" onclick="estMoverEnCelda('${c1.id}',${i},-1)">◀</button><button class="b2" title="Más a la derecha" onclick="estMoverEnCelda('${c1.id}',${i},1)">▶</button></td>
@@ -1190,8 +1206,8 @@ function vEstanteriaHTML(){
       ${[...new Set(Object.values(e.prods).map(p => subKey(p.f, p.s)))].sort().map(k => `<tr><td><input type="color" value="${e.subCol[k]}" style="width:36px;padding:0" onchange="estColorEdit('s','${esc(k)}',this.value)"></td><td>${esc(k.replace('|', ' › '))}</td><td><input value="${esc(e.subAb[k])}" style="width:80px" onchange="estColorEdit('sa','${esc(k)}',this.value)"></td></tr>`).join('')}</tbody></table></div></div>
     <button class="b2" style="margin-top:8px" onclick="estRecolorear()">🎨 Regenerar colores automáticos</button>
     <h4 style="margin:12px 0 4px">Medidas por tramo (de izquierda a derecha)</h4>
-    <table><thead><tr><th>Tramo</th><th>Columnas</th><th>Ancho columna (cm)</th><th>Alto niveles en cm, de piso hacia arriba</th></tr></thead><tbody>
-    ${e.tramos.map((t, i) => `<tr><td><span style="display:inline-block;width:12px;height:12px;background:${t.color};border:1px solid #555"></span> <input value="${esc(t.nombre)}" onchange="estTramoEdit(${i},'nombre',this.value)"></td><td><input type="number" value="${t.cols}" style="width:60px" onchange="estTramoEdit(${i},'cols',this.value)"></td>
+    <table><thead><tr><th>Tramo</th><th>Columnas</th><th>Ancho columna (cm)</th><th>Alto de cada nivel en cm, de piso hacia arriba (F, E, D, C, B, A)</th></tr></thead><tbody>
+    ${e.tramos.map((t, i) => `<tr><td><span style="display:inline-block;width:12px;height:12px;background:${t.color};border:1px solid #555"></span> <input value="${esc(t.nombre)}" onchange="estTramoEdit(${i},'nombre',this.value)"></td><td>${t.cols}</td>
       <td><input type="number" value="${t.ancho}" style="width:70px" onchange="estTramoEdit(${i},'ancho',this.value)"></td><td><input value="${t.niveles.join(', ')}" onchange="estTramoEdit(${i},'niveles',this.value)"></td></tr>`).join('')}</tbody></table>
     <button class="b2" style="margin-top:8px" onclick="if(confirm('¿Restaurar las medidas del Excel?')){S.estanteria.tramos=JSON.parse(JSON.stringify(EST_TRAMOS_DEF));guardar();vEstanteria()}">Restaurar medidas del Excel</button>
     <p class="muted">Si cambias el número de columnas o niveles, los casilleros que dejen de existir no se muestran (sus asignaciones quedan guardadas).</p>`;
@@ -1222,16 +1238,16 @@ function estModalEtq(desdeSel){
 function etqEsc(ev){ if (ev.key === 'Escape') etqCerrar(); }
 function etqCerrar(){ const m = $('#estModalE'); if (m) m.remove(); document.removeEventListener('keydown', etqEsc); }
 function etqTxt(c, p, d){ // texto donde se busca: código, descripción, etiqueta, #número, familia, subfamilia y casilleros (07-3 y 7-3)
-  const ub = (d[c] || []).map(id => { const [a, b] = id.split('-'); return `${id} ${+a}-${b} c${+a} col${+a}`; }).join(' ');
+  const ub = (d[c] || []).map(id => { const a = parseInt(id); return `${id} c${a} col${a}`; }).join(' ');
   return ' ' + norm(`${c} ${estDesc(c)} ${p.lab} #${p.n} n${p.n} ${p.f} ${p.s} ${ub || 'sin ubicar'}`) + ' ';
 }
 function etqLista(){
   const e = S.estanteria, d = estDonde(), ws = norm(EST_EF.q).split(/\s+/).filter(Boolean);
   return Object.entries(e.prods).filter(([c, p]) => (!EST_EF.f || p.f === EST_EF.f) && (!EST_EF.s || p.s === EST_EF.s)
-    && (!EST_EF.col || (d[c] || []).some(id => +id.slice(0, 2) === +EST_EF.col)) && (!EST_EF.solo || EST_ETQ[c])
-    && (!EST_EF.niv || (d[c] || []).some(id => +id.split('-')[1] === +EST_EF.niv))
-    && (!ws.length || ws.every(w => { const t = etqTxt(c, p, d), m = w.match(/^(\d{1,2})-(\d)$/); if (m) return t.includes(` ${String(+m[1]).padStart(2, '0')}-${m[2]} `); if (/^#\d+$/.test(w)) return t.includes(` ${w} `); return t.includes(w); })))
-    .sort((a, b) => ((d[a[0]] || ['99'])[0]).localeCompare((d[b[0]] || ['99'])[0]) || a[1].n - b[1].n);
+    && (!EST_EF.col || (d[c] || []).some(id => parseInt(id) === +EST_EF.col)) && (!EST_EF.solo || EST_ETQ[c])
+    && (!EST_EF.niv || (d[c] || []).some(id => id.replace(/^\d+/, '')[0] === EST_EF.niv))
+    && (!ws.length || ws.every(w => { const t = etqTxt(c, p, d); if (/^\d{1,2}[a-f](\.\d)?$/.test(w)) return t.includes(` ${w}`); if (/^#\d+$/.test(w)) return t.includes(` ${w} `); return t.includes(w); })))
+    .sort((a, b) => estKey((d[a[0]] || ['99'])[0]).localeCompare(estKey((d[b[0]] || ['99'])[0])) || a[1].n - b[1].n);
 }
 function etqRender(){
   const m = $('#estModalE'); if (!m) return; const e = S.estanteria, d = estDonde(), cf = etqConf(), fams = estFams(e);
@@ -1245,8 +1261,8 @@ function etqRender(){
       <div class="row" style="align-items:center"><select onchange="EST_EF.f=this.value;EST_EF.s='';etqRender()">${selOpts(fams, EST_EF.f, 'Todas las familias')}</select>
         <select onchange="EST_EF.s=this.value;etqRender()">${selOpts(estSubs(e, EST_EF.f), EST_EF.s, 'Todas las subfamilias')}</select>
         <select onchange="EST_EF.col=this.value;etqRender()"><option value="">Todas las columnas</option>${Array.from({ length: totalCol }, (_, i) => `<option value="${i + 1}" ${+EST_EF.col === i + 1 ? 'selected' : ''}>Columna ${i + 1}</option>`).join('')}</select>
-        <select onchange="EST_EF.niv=this.value;etqRender()"><option value="">Todos los niveles</option>${[1, 2, 3, 4, 5, 6].map(i => `<option value="${i}" ${+EST_EF.niv === i ? 'selected' : ''}>Nivel ${i}${i === 1 ? ' (piso)' : ''}</option>`).join('')}</select>
-        <input id="etqQ" placeholder="🔍 Buscar: código, nombre, #número, casillero (07-3 o 7-3), familia…" title="Ejemplos: 70511 · 50x50 · #120 · 07-3 · 7-3 · sin ubicar · cobre" value="${esc(EST_EF.q)}" style="flex:1;min-width:220px" oninput="EST_EF.q=this.value;etqRender()">
+        <select onchange="EST_EF.niv=this.value;etqRender()"><option value="">Todos los niveles</option>${['A', 'B', 'C', 'D', 'E', 'F'].map(i => `<option value="${i}" ${EST_EF.niv === i ? 'selected' : ''}>Nivel ${i}${i === 'F' ? ' (piso)' : ''}</option>`).join('')}</select>
+        <input id="etqQ" placeholder="🔍 Buscar: código, nombre, #número, casillero (4B o 4B.1), familia…" title="Ejemplos: 70511 · 50x50 · #120 · 4B · 4B.1 · sin ubicar · cobre" value="${esc(EST_EF.q)}" style="flex:1;min-width:220px" oninput="EST_EF.q=this.value;etqRender()">
         <label style="flex-direction:row;align-items:center;gap:4px;color:inherit;font-size:13px"><input type="checkbox" ${EST_EF.solo ? 'checked' : ''} onchange="EST_EF.solo=this.checked;etqRender()"> Ver solo los elegidos</label></div>
       <div class="row" style="align-items:center;margin-top:6px"><button class="b2" onclick="etqTodos(true)">☑ Elegir todos los de la lista (${L.length})</button><button class="b2" onclick="etqTodos(false)">☐ Quitar los de la lista</button><button class="b2" onclick="EST_ETQ={};etqRender()">Limpiar selección</button>
         <span style="flex:1"></span><label style="flex-direction:row;align-items:center;gap:6px;color:inherit;font-size:13px">Cantidad para todos los elegidos <input id="etqCantT" type="number" min="1" value="${EST_ETQ_CANT}" style="width:60px" oninput="EST_ETQ_CANT=Math.max(1,Math.round(n(this.value,1)))"></label><button class="b2" onclick="etqCantTodos()">Aplicar</button></div>
@@ -1282,7 +1298,7 @@ function etqHTML(c, cf, muestra){
 function etqImprimir(){
   const cf = etqConf(), lista = Object.entries(EST_ETQ).filter(([, q]) => q > 0);
   if (!lista.length) return toast('No hay etiquetas para imprimir');
-  const d = estDonde(); lista.sort((a, b) => ((d[a[0]] || ['99'])[0]).localeCompare((d[b[0]] || ['99'])[0]));
+  const d = estDonde(); lista.sort((a, b) => estKey((d[a[0]] || ['99'])[0]).localeCompare(estKey((d[b[0]] || ['99'])[0])));
   const etArr = lista.flatMap(([c, q]) => Array(q).fill(c)).map(c => `<div class="pg">${etqHTML(c, cf, false)}</div>`), et = etArr.join('');
   const cont = cf.modo !== 'hoja', corte = etqCorte(cf);
   const css = cont
@@ -1327,7 +1343,7 @@ function imprimirEstanteria(o){
     const cods = [...new Set(cel.filter(c => c.col >= a && c.col <= b).flatMap(c => e.celdas[c.id] || []))].filter(c => e.prods[c]);
     const nLey = o.modo === 'producto' ? Math.ceil(cods.length / 5) : Math.ceil(new Set(cods.map(c => o.modo === 'sub' ? subKey(e.prods[c].f, e.prods[c].s) : e.prods[c].f)).size / 3);
     const h = o.leyenda ? Math.max(78, 172 - nLey * (o.modo === 'producto' ? 2.85 : 4.4)) : 178;
-    cuerpo += `<div class="hoja"><div style="display:flex;justify-content:space-between;align-items:baseline"><h1 style="font-size:15px;margin:0">Estantería ${tit} — parte ${i + 1} de 2 (columnas ${a}–${b})</h1><span style="font-size:10px">${fecha} · casillero = columna-nivel (nivel 1 = piso)</span></div>
+    cuerpo += `<div class="hoja"><div style="display:flex;justify-content:space-between;align-items:baseline"><h1 style="font-size:15px;margin:0">Estantería ${tit} — parte ${i + 1} de 2 (columnas ${a}–${b})</h1><span style="font-size:10px">${fecha} · casillero = columna + nivel (A arriba … F piso) + parte</span></div>
       ${estSVG(a, b, Object.assign({ imp: true, h }, o))}
       ${o.leyenda && cods.length ? `<div class="ley">${estLeyenda(e, o.modo, cods, !o.color)}</div>` : ''}</div>`;
   });
