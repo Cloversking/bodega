@@ -1432,7 +1432,7 @@ function etqCrop(src, x, y, w, h, c){
 const etqEsc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 const etqFS = (pt, w) => ETQ.fuente === 'term' ? `font-size:${(pt * 1.04).toFixed(2)}pt;font-weight:400;-webkit-text-stroke:${w >= 700 ? (pt * .0125 * 25.4 / 25.4).toFixed(3) : 0}mm #000;` : `font-size:${pt}pt;font-weight:${w};`;
-const etqTI = t => ETQ.fuente === 'term' ? `<span style="display:inline-block;white-space:pre;transform:scaleX(.82)">${t}</span>` : t;
+const etqTI = t => ETQ.fuente === 'term' ? `<span style="display:block;width:121.95%;margin-left:-10.976%;text-align:center;white-space:pre;transform:scaleX(.82);transform-origin:center">${t}</span>` : t;
 function etqLabel(mk, it, ancho){
   if (ETQ_MOD[mk] && ETQ_MOD[mk].term) return etqTerm(it);
   const m = etqGeo(mk, ancho), fr = m.frame ? (m.frame[4] || 5) : 0, W = m.W, H = m.H, [bx, by, bw, bh] = m.blue, t = 2.822, tk = 1.411, gp = .706, tn = .706;
