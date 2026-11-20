@@ -35,7 +35,7 @@ td{padding:5px 6px;border-bottom:1px solid #e5e7eb;vertical-align:top}
 td input,td select{width:100%;padding:4px}
 .num{text-align:right}
 .tag{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:bold}.OSALA{background:#dbeafe;color:#1e40af}.OBOD{background:#ffedd5;color:#9a3412}
-.ALTA{background:#dcfce7;color:#166534}.MEDIA{background:#fef9c3;color:#854d0e}.BAJA{background:#fee2e2;color:#9a3412}.REVISAR,.ESTIMADO{background:#fecaca;color:#991b1b}.IA{background:#e0e7ff;color:#3730a3}.EDITADO{background:#cffafe;color:#155e75}
+.ALTA{background:#dcfce7;color:#166534}.MEDIA{background:#fef9c3;color:#854d0e}.BAJA{background:#fee2e2;color:#9a3412}.SIMILAR{background:#fef9c3;color:#854d0e}.REVISAR,.ESTIMADO{background:#fecaca;color:#991b1b}.IA{background:#e0e7ff;color:#3730a3}.EDITADO{background:#cffafe;color:#155e75}
 .muted{color:var(--mu);font-size:12px}
 .warn{color:var(--wa);font-weight:bold}.err{color:var(--er);font-weight:bold}.okc{color:var(--ok);font-weight:bold}
 #paste{border:2px dashed var(--az2);border-radius:8px;padding:22px;text-align:center;color:var(--az2);background:#f8faff;cursor:pointer}
@@ -168,6 +168,8 @@ function normalizar(x){
   x.turnos.def = x.turnos.def || null; x.turnos.asist = x.turnos.asist || {};
   x.turnos.pre = Object.assign({}, { lj: { e: '08:00', c: '14:00', s: '17:30' }, vi: { e: '08:00', c: '14:00', s: '17:00' } }, x.turnos.pre || {});
   x.ruta.items = x.ruta.items.filter(id => x.despachos.some(d => d.id === id));
+  x.cat = x.cat || { nuevos: [], mods: {}, log: [] }; x.cat.nuevos = x.cat.nuevos || []; x.cat.mods = x.cat.mods || {}; x.cat.log = x.cat.log || [];
+  aplicarCatalogo(x);
   return x;
 }
 const fechaTxt = iso => iso ? new Date(iso).toLocaleString('es-CL') : 'sin fecha';
@@ -2140,9 +2142,10 @@ function vProductos(){
     <label><span><input type="checkbox" id="qAct" checked onchange="buscar()"> Solo activos</span></label>
     <label><span><input type="checkbox" id="qEst" onchange="buscar()"> Solo estantería</span></label></div>
     <div id="res" style="max-height:420px;overflow:auto;margin-top:8px"></div>
-    <p class="muted">${PRODUCTOS.length.toLocaleString("es-CL")} productos (${NB_BOD.toLocaleString("es-CL")} de bodega · ${NB_SALA.toLocaleString("es-CL")} de sala) con peso estimado. ALTA = dato exacto o calculado con medidas · MEDIA = con un supuesto · BAJA = valor típico · REVISAR = genérico (corrígelo con el botón Corregir).</p></div>
-    <div class="card"><h2>Calcular traspaso / carga</h2><div id="calc"></div></div>`;
-  buscar(); pintarCalc();
+    <p class="muted">${PRODUCTOS.length.toLocaleString("es-CL")} productos (${PRODUCTOS.filter(p => p[9] !== "S").length.toLocaleString("es-CL")} de bodega · ${PRODUCTOS.filter(p => p[9] === "S").length.toLocaleString("es-CL")} de sala) con peso estimado. ALTA = dato exacto o calculado con medidas · MEDIA = con un supuesto · BAJA = valor típico · REVISAR = genérico (corrígelo con el botón Corregir).</p></div>
+    <div class="card"><h2>Calcular traspaso / carga</h2><div id="calc"></div></div>
+    ${USER.rol === 'admin' ? '<div class="card" id="catCard"></div>' : ''}`;
+  buscar(); pintarCalc(); if (USER.rol === 'admin') pintarCat();
 }
 function buscar(){
   const q = norm($('#q').value).trim(), act = $('#qAct').checked, est = $('#qEst') && $('#qEst').checked;
@@ -2172,6 +2175,138 @@ function pintarCalc(){
     <p style="font-size:16px"><b>Peso total: ${fmt(kg, 2)} kg</b> · ${fmt(vol, 3)} m³ · pieza más larga ${fmt(lm, 2)} m — ${v ? `cabe en <b>${esc(v.nombre)}</b>${lm > v.largoMax ? ' <span class="warn">(carga sobresaliente)</span>' : ''}` : '<span class="err">no cabe en ningún vehículo activo: dividir en varios viajes</span>'}
     <button class="b2" onclick="CALC=[];pintarCalc()">Limpiar</button></p>`;
 }
+
+/* ===================== ACTUALIZAR CATALOGO DESDE CSV ===================== */
+function aplicarCatalogo(x){
+  const c = x && x.cat; if (!c || typeof PMAP === 'undefined') return;
+  for (const q of c.nuevos){ if (PMAP.has(norm(q.c))) continue; const p = [q.c, q.d, q.peso, q.largo, q.ancho, q.alto, q.vol, q.conf || 'ESTIMADO', 1, q.a || 'B']; PRODUCTOS.push(p); PMAP.set(norm(q.c), p); PROD_MAP[String(q.c)] = p; }
+  for (const [k, m] of Object.entries(c.mods)){
+    let p = PMAP.get(k) || (m.c ? PMAP.get(norm(m.c)) : null); if (!p) continue;
+    if (m.d) p[1] = m.d; if (m.a) p[9] = m.a;
+    if (m.c && norm(p[0]) !== norm(m.c)){ p[0] = m.c; PMAP.set(norm(m.c), p); PMAP.set(k, p); PROD_MAP[String(m.c)] = p; }
+    p[10] = null;
+  }
+}
+let CATU = null;
+const catLimpia = v => String(v ?? '').trim().replace(/^="([\s\S]*)"$/, '$1').replace(/""/g, '"').trim();
+const catDK = d => norm(d).replace(/[^A-Z0-9]/g, '');
+async function catTexto(f){ const b = await f.arrayBuffer(); let t; try { t = new TextDecoder('utf-8', { fatal: true }).decode(b); } catch(e){ t = new TextDecoder('windows-1252').decode(b); } return t.replace(/^﻿/, ''); }
+function catCSV(t){
+  const rows = []; let r = [], f = '', q = false;
+  for (let i = 0; i < t.length; i++){ const ch = t[i];
+    if (q){ if (ch === '"'){ if (t[i + 1] === '"'){ f += '"'; i++; } else q = false; } else f += ch; continue; }
+    if (ch === '"' && f === ''){ q = true; continue; }
+    if (ch === ';'){ r.push(f); f = ''; continue; }
+    if (ch === '\n' || ch === '\r'){ if (ch === '\r' && t[i + 1] === '\n') i++; r.push(f); f = ''; if (r.length > 1 || r[0] !== '') rows.push(r); r = []; continue; }
+    f += ch; }
+  if (f !== '' || r.length){ r.push(f); rows.push(r); }
+  return rows;
+}
+const CAT_COLORES = new Set('BLANCO NEGRO BEIGE GRIS GRAFITO MADERA ROBLE OSCURO CLARO VERDE AZUL ROJO CAFE CAOBA NOGAL CEDRO ARENA MARFIL TERRACOTA AMARILLO NARANJO'.split(' '));
+function catToks(d){ return norm(d).split(/[^A-Z0-9.,]+/).filter(t => t && !CAT_COLORES.has(t)); }
+function catEstimar(desc){
+  const A = catToks(desc), SA = new Set(A), numA = A.filter(t => /\d/.test(t)); let best = null, bs = 0;
+  for (const p of PRODUCTOS){
+    const cf = p[7]; if (!(p[2] > 0) || cf === 'ESTIMADO' || cf === 'REVISAR') continue;
+    const B = catToks(p[1]); if (!B.length) continue; const SB = new Set(B);
+    if (numA.some(t => !SB.has(t)) || B.filter(t => /\d/.test(t)).some(t => !SA.has(t))) continue;
+    let i = 0; SA.forEach(t => { if (SB.has(t)) i++; }); const sc = i / (SA.size + SB.size - i);
+    if (sc > bs){ bs = sc; best = p; }
+  }
+  if (best && bs >= .6) return { peso: best[2], largo: best[3], ancho: best[4], alto: best[5], vol: best[6], conf: 'SIMILAR', ref: String(best[0]) };
+  const e = estimarDesc(desc); const l = e.largo || .3, side = Math.sqrt(Math.max(e.vol, .0001) / l);
+  return { peso: +e.peso.toFixed(3), largo: l, ancho: +side.toFixed(3), alto: +side.toFixed(3), vol: +e.vol.toFixed(4), conf: e.conf === 'REVISAR' ? 'ESTIMADO' : e.conf, ref: '' };
+}
+function catAnalizar(rows){
+  const h = rows[0].map(x => catLimpia(x).toUpperCase()), ic = h.indexOf('CODIGOFH'), id = h.indexOf('DESCRIPCION'), ia = h.indexOf('AREAGEN'), idc = h.indexOf('DESCONTINUADO');
+  if (ic < 0 || id < 0) return null;
+  const data = rows.slice(1).map(r => ({ c: catLimpia(r[ic]), d: catLimpia(r[id]), a: ia < 0 ? null : ({ '1': 'S', '2': 'B' })[catLimpia(r[ia])] || null, dis: idc >= 0 && /^SI$/i.test(catLimpia(r[idc])) })).filter(x => x.c && x.d);
+  const csvK = new Set(data.map(x => norm(x.c))), idx = new Map();
+  for (const p of PRODUCTOS){ const k = catDK(p[1]); if (!idx.has(k)) idx.set(k, []); idx.get(k).push(p); }
+  const out = { nuevos: [], codigo: [], desc: [], area: [], iguales: 0, total: data.length, sinArea: !data.some(x => x.a) };
+  const vistos = new Set();
+  for (const x of data){
+    const k = norm(x.c); if (vistos.has(k)) continue; vistos.add(k);
+    const p = PMAP.get(k);
+    if (p){
+      let cambio = false;
+      if (catDK(p[1]) !== catDK(x.d)){ out.desc.push({ c: String(p[0]), ant: p[1], nue: x.d, acc: 'mantener' }); cambio = true; }
+      if (x.a && x.a !== p[9]){ out.area.push({ c: String(p[0]), d: p[1], ant: p[9], nue: x.a, acc: 'mantener' }); cambio = true; }
+      if (!cambio) out.iguales++;
+      continue;
+    }
+    const cand = (idx.get(catDK(x.d)) || []).filter(q => !csvK.has(norm(q[0])));
+    if (cand.length) out.codigo.push({ viejo: String(cand[0][0]), nuevo: x.c, d: x.d, a: x.a || cand[0][9], acc: 'cambiar' });
+    else out.nuevos.push(Object.assign({ c: x.c, d: x.d, a: x.a || 'B', inc: true, dis: x.dis }, catEstimar(x.d)));
+  }
+  return out;
+}
+async function catCargar(f){
+  if (!f) return;
+  try {
+    const rows = catCSV(await catTexto(f)); const r = catAnalizar(rows);
+    if (!r){ toast('No encuentro las columnas CodigoFH y Descripcion en ese archivo', 4000); return; }
+    CATU = r; CATU.archivo = f.name; pintarCat();
+  } catch(e){ toast('No pude leer el archivo: ' + e.message, 4000); }
+}
+function catPend(){ return S.cat.nuevos.filter(q => !S.overrides[norm(q.c)]); }
+function catCopiar(){
+  const l = catPend(); if (!l.length) return toast('No hay productos por verificar');
+  const t = 'codigo;descripcion;peso_kg;largo_m;ancho_m;alto_m\n' + l.map(q => [q.c, q.d, q.peso, q.largo, q.ancho, q.alto].join(';')).join('\n');
+  const fin = () => toast(l.length + ' productos copiados: pégalos en el chat de Claude para verificar sus pesos', 4500);
+  (navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(t).then(fin) : Promise.reject()).catch(() => { prompt('Copia este texto (Ctrl+C):', t); });
+}
+function catSetAcc(g, i, v){ CATU[g][i].acc = v; }
+function catTodos(g, v){ CATU[g].forEach(x => x.acc = v); pintarCat(); }
+function catNuevoCampo(i, k, v){ const q = CATU.nuevos[i]; if (k === 'inc') q.inc = v; else if (k === 'a') q.a = v; else { q[k] = n(v); q.vol = +(q.largo * q.ancho * q.alto || q.vol).toFixed(4); if (k === 'peso') q.conf = 'EDITADO'; } }
+function catAplicar(){
+  if (!CATU) return; const C = S.cat, e = S.estanteria; let nn = 0, nc = 0, nd = 0, na = 0;
+  const mod = k => C.mods[k] = C.mods[k] || {};
+  const addNuevo = q => { C.nuevos.push({ c: q.c, d: q.d, a: q.a, peso: q.peso, largo: q.largo, ancho: q.ancho, alto: q.alto, vol: q.vol, conf: q.conf, ref: q.ref || '', fecha: hoy(), por: USER.u }); nn++; };
+  CATU.nuevos.filter(q => q.inc).forEach(addNuevo);
+  for (const x of CATU.codigo){
+    if (x.acc === 'cambiar'){
+      const ko = norm(x.viejo), kn = norm(x.nuevo); mod(ko).c = x.nuevo; if (x.a) mod(ko).a = x.a;
+      if (S.overrides[ko]){ S.overrides[kn] = S.overrides[ko]; delete S.overrides[ko]; }
+      C.nuevos.forEach(q => { if (norm(q.c) === ko) q.c = x.nuevo; });
+      if (e){
+        if (e.prods && e.prods[x.viejo]){ e.prods[x.nuevo] = e.prods[x.viejo]; delete e.prods[x.viejo]; }
+        Object.keys(e.celdas || {}).forEach(id => { e.celdas[id] = e.celdas[id].map(c => c === x.viejo ? x.nuevo : c); });
+        Object.keys(e.cant || {}).forEach(id => { if (e.cant[id] && x.viejo in e.cant[id]){ e.cant[id][x.nuevo] = e.cant[id][x.viejo]; delete e.cant[id][x.viejo]; } });
+      }
+      nc++;
+    } else if (x.acc === 'nuevo'){ addNuevo(Object.assign({ c: x.nuevo, d: x.d, a: x.a || 'B' }, catEstimar(x.d))); }
+  }
+  for (const x of CATU.desc) if (x.acc === 'actualizar'){ mod(norm(x.c)).d = x.nue; nd++; }
+  for (const x of CATU.area) if (x.acc === 'cambiar'){ mod(norm(x.c)).a = x.nue; na++; }
+  C.log.push({ f: hoy(), por: USER.u, archivo: CATU.archivo, nuevos: nn, codigos: nc, desc: nd, area: na });
+  aplicarCatalogo(S); guardar();
+  const r = { nn, nc, nd, na }; CATU = null; buscar(); pintarCat(r);
+}
+function pintarCat(res){
+  const box = $('#catCard'); if (!box) return;
+  const pend = catPend(), ult = S.cat.log[S.cat.log.length - 1];
+  let h = `<h2>🔄 Actualizar productos desde CSV</h2>
+    <p class="muted">Lee el CSV del sistema, lo compara con esta base por código y descripción, agrega los productos que faltan (con peso aproximado) y te muestra los cambios para que elijas qué hacer.${ult ? ` Última actualización: ${esc(ult.f)} (${ult.nuevos} nuevos).` : ''}</p>
+    <input type="file" id="catFile" accept=".csv,.txt" style="display:none" onchange="catCargar(this.files[0]);this.value=''">
+    <button class="b" onclick="$('#catFile').click()">📂 Elegir CSV y comparar</button>`;
+  if (res) h += `<p style="margin-top:10px"><b>✅ Listo:</b> ${res.nn} productos nuevos agregados · ${res.nc} códigos cambiados · ${res.nd} descripciones actualizadas · ${res.na} cambios de sala/bodega.</p>`;
+  if (pend.length) h += `<p style="margin-top:10px"><span class="tag REVISAR">${pend.length} por verificar</span> Productos agregados con peso aproximado que aún no corriges. <button class="b2" onclick="catCopiar()">📋 Copiar para verificar</button></p>`;
+  if (CATU){
+    const c = CATU, sel = (g, i, ops, v) => `<select onchange="catSetAcc('${g}',${i},this.value)">${ops.map(([k, t]) => `<option value="${k}" ${k === v ? 'selected' : ''}>${t}</option>`).join('')}</select>`;
+    const ar = a => a === 'S' ? 'SALA' : 'BODEGA';
+    h += `<hr style="margin:12px 0"><p><b>${esc(c.archivo)}</b>: ${c.total} filas · ${c.iguales} sin cambios · ${c.nuevos.length} nuevos · ${c.codigo.length} con código distinto · ${c.desc.length} con descripción distinta · ${c.area.length} con sala/bodega distinto.</p>`;
+    if (c.sinArea) h += `<p class="warn">El archivo no trae la columna AreaGen: no se puede comparar sala/bodega.</p>`;
+    if (c.nuevos.length) h += `<h3>🆕 Productos nuevos (${c.nuevos.length})</h3><div style="max-height:340px;overflow:auto"><table><thead><tr><th></th><th>Código</th><th>Descripción</th><th>Va a</th><th>Peso kg</th><th>Base del peso</th></tr></thead><tbody>${c.nuevos.map((q, i) => `<tr><td><input type="checkbox" ${q.inc ? 'checked' : ''} onchange="catNuevoCampo(${i},'inc',this.checked)"></td><td>${esc(q.c)}</td><td>${esc(q.d)}${q.dis ? ' <span class="warn">(descontinuado)</span>' : ''}</td><td><select onchange="catNuevoCampo(${i},'a',this.value)"><option value="B" ${q.a === 'B' ? 'selected' : ''}>BODEGA</option><option value="S" ${q.a === 'S' ? 'selected' : ''}>SALA</option></select></td><td><input value="${q.peso}" size="6" onchange="catNuevoCampo(${i},'peso',this.value)"></td><td><span class="tag ${q.conf}">${q.conf === 'SIMILAR' ? 'parecido a ' + esc(q.ref) : q.conf}</span></td></tr>`).join('')}</tbody></table></div>`;
+    if (c.codigo.length) h += `<h3>🔁 Mismo producto con código distinto (${c.codigo.length})</h3><p class="muted">La descripción ya existe en la base con otro código.</p><table><thead><tr><th>Código en la base</th><th>Código en el CSV</th><th>Descripción</th><th>Qué hago</th></tr></thead><tbody>${c.codigo.map((x, i) => `<tr><td>${esc(x.viejo)}</td><td>${esc(x.nuevo)}</td><td>${esc(x.d)}</td><td>${sel('codigo', i, [['cambiar', 'Cambiar el código (conserva estantería y correcciones)'], ['nuevo', 'Agregar como producto nuevo'], ['ignorar', 'Ignorar']], x.acc)}</td></tr>`).join('')}</tbody></table>`;
+    if (c.desc.length) h += `<h3>✏️ Descripción distinta (${c.desc.length})</h3><p><button class="b2" onclick="catTodos('desc','actualizar')">Actualizar todas</button> <button class="b2" onclick="catTodos('desc','mantener')">Mantener todas</button></p><table><thead><tr><th>Código</th><th>En la base</th><th>En el CSV</th><th>Qué hago</th></tr></thead><tbody>${c.desc.map((x, i) => `<tr><td>${esc(x.c)}</td><td>${esc(x.ant)}</td><td>${esc(x.nue)}</td><td>${sel('desc', i, [['mantener', 'Mantener la actual'], ['actualizar', 'Usar la del CSV']], x.acc)}</td></tr>`).join('')}</tbody></table>`;
+    if (c.area.length) h += `<h3>🏬 Sala / bodega distinto (${c.area.length})</h3><p><button class="b2" onclick="catTodos('area','cambiar')">Cambiar todos</button> <button class="b2" onclick="catTodos('area','mantener')">Mantener todos</button></p><table><thead><tr><th>Código</th><th>Descripción</th><th>En la base</th><th>En el CSV</th><th>Qué hago</th></tr></thead><tbody>${c.area.map((x, i) => `<tr><td>${esc(x.c)}</td><td>${esc(x.d)}</td><td>${ar(x.ant)}</td><td>${ar(x.nue)}</td><td>${sel('area', i, [['mantener', 'Mantener'], ['cambiar', 'Cambiar a ' + ar(x.nue)]], x.acc)}</td></tr>`).join('')}</tbody></table>`;
+    const hay = c.nuevos.length + c.codigo.length + c.desc.length + c.area.length;
+    h += hay ? `<p style="margin-top:12px"><button class="b" onclick="catAplicar()">✅ Aplicar lo elegido</button> <button class="b2" onclick="CATU=null;pintarCat()">Cancelar</button></p>` : `<p style="margin-top:12px">No hay nada que actualizar: la base ya está al día con este archivo. <button class="b2" onclick="CATU=null;pintarCat()">Cerrar</button></p>`;
+  }
+  box.innerHTML = h;
+}
+
 function editarProd(cod){
   const x = producto(cod);
   const v = prompt(`Corregir ${cod}\n${x.desc}\n\nEscribe: peso kg; largo m; ancho m; alto m (separados por ;)`, [x.peso, x.largo, x.ancho, x.alto].join('; '));
