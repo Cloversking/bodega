@@ -1919,7 +1919,7 @@ function filasP(){
   const L = S.personal.map((p, i) => ({ p, i }));
   if (!PSORT) return L;
   const { k, d } = PSORT, nz = v => String(v || '').trim() === '';
-  const val = p => k === 'descanso' ? DIAS.indexOf(p.descanso) : String(p[k] || '');
+  const val = p => k === 'descanso' ? DIAS.indexOf(p.descanso) : k === 'cumple' ? String(p.cumple || '').slice(5) : String(p[k] || '');
   return L.sort((a, b) => { const va = a.p[k], vb = b.p[k]; if (nz(va) !== nz(vb)) return nz(va) ? 1 : -1; if (nz(va)) return a.i - b.i; const x = val(a.p), y = val(b.p); const c = typeof x === 'number' ? x - y : x.localeCompare(y, 'es', { numeric: true, sensitivity: 'base' }); return c * d || a.i - b.i; });
 }
 function vPersonal(){
@@ -1929,9 +1929,10 @@ function vPersonal(){
   $('#main').innerHTML = `<div class="card"><div class="row"><h2 style="flex:1;margin:0">Personal de bodega (${S.personal.length - pend} de ${DOTACION.reduce((a, d) => a + d[1], 0)} · ${pend} pendientes)</h2><button class="b2 noprint" onclick="window.print()">🖨 Imprimir</button></div>
   ${resumenTurnos()}
   <details class="noprint" style="margin:8px 0"><summary style="cursor:pointer;color:var(--az)">Dotación definitiva por cargo</summary><table style="width:auto;margin-top:6px"><thead><tr><th>Cargo</th><th>Dotación</th><th>Asignados</th><th>Pendientes</th></tr></thead><tbody>${resumen}</tbody></table></details>
-  <table style="margin-top:8px"><thead><tr><th>#</th>${[['nombre', 'Nombre'], ['cargo', 'Cargo'], ['turno', 'Turno'], ['descanso', 'Día de descanso'], ['telefono', 'Teléfono']].map(([k, l]) => `<th style="cursor:pointer;user-select:none;white-space:nowrap" title="Ordenar por ${l.toLowerCase()}" onclick="sortP('${k}')">${l} ${PSORT && PSORT.k === k ? (PSORT.d === 1 ? '▲' : '▼') : '<span style="opacity:.3">↕</span>'}</th>`).join('')}<th class="noprint">${PSORT ? '<button class="bx" title="Volver al orden manual" onclick="PSORT=null;vPersonal()">↺</button>' : ''}</th></tr></thead><tbody>
+  <table style="margin-top:8px"><thead><tr><th>#</th>${[['nombre', 'Nombre'], ['cargo', 'Cargo'], ['turno', 'Turno'], ['descanso', 'Día de descanso'], ['cumple', 'Cumpleaños'], ['telefono', 'Teléfono']].map(([k, l]) => `<th style="cursor:pointer;user-select:none;white-space:nowrap" title="Ordenar por ${l.toLowerCase()}" onclick="sortP('${k}')">${l} ${PSORT && PSORT.k === k ? (PSORT.d === 1 ? '▲' : '▼') : '<span style="opacity:.3">↕</span>'}</th>`).join('')}<th class="noprint">${PSORT ? '<button class="bx" title="Volver al orden manual" onclick="PSORT=null;vPersonal()">↺</button>' : ''}</th></tr></thead><tbody>
   ${filasP().map(({ p, i }, n) => `<tr><td>${n + 1}</td><td><input value="${esc(p.nombre)}" ${p.pendiente ? 'style="font-style:italic;opacity:.75" onfocus="this.select()" oninput="if(this.value.trim()&&!/^\\s*pendiente/i.test(this.value)){this.style.fontStyle=\'normal\';this.style.opacity=1}"' : ''} onchange="S.personal[${i}].nombre=this.value;if(S.personal[${i}].pendiente&&this.value.trim()&&!/^\s*pendiente/i.test(this.value))delete S.personal[${i}].pendiente;guardar();vPersonal()"></td>
     <td>${sel(i, 'cargo', CARGOS)}</td><td style="width:70px">${sel(i, 'turno', ['A','B'])}</td><td>${S.turnos.def && p.descanso ? `<b>${p.descanso}</b> <span title="Bloqueado: los turnos definitivos ya están creados. El día libre solo se mueve semana a semana en el calendario.">🔒</span>` : sel(i, 'descanso', DIAS.slice(0, 5))}${!p.descanso ? ' <span class="warn" title="sin día de descanso">⚠</span>' : ''}</td>
+    <td><input type="date" value="${esc(p.cumple || '')}" title="Fecha de nacimiento (solo se usa día y mes): ese día es libre pagado, si no cae en su día de descanso" onchange="S.personal[${i}].cumple=this.value;guardar();vPersonal()"></td>
     <td><input value="${esc(p.telefono || '')}" onchange="S.personal[${i}].telefono=this.value;guardar()"></td>
     <td class="noprint" style="white-space:nowrap">${PSORT ? '' : `<button class="bx" title="Subir" onclick="moverP(${i},-1)">▲</button><button class="bx" title="Bajar" onclick="moverP(${i},1)">▼</button> `}<button class="bx" title="Eliminar" onclick="if(confirm('¿Eliminar a ${esc(p.nombre).replace(/'/g, '')}?')){S.personal.splice(${i},1);guardar();vPersonal()}">✕</button></td></tr>`).join('')}
   </tbody></table>
@@ -1961,6 +1962,7 @@ function ferSel(di){
   return `<select title="¿Se trabaja ese día?" onchange="ferSet('${di}',this.value)"><option value="si" ${v === 'si' ? 'selected' : ''}>Se trabaja</option><option value="no" ${v === 'no' ? 'selected' : ''}>No se trabaja</option></select>`;
 }
 function ferSet(di, v){ S.turnos.fer = S.turnos.fer || {}; S.turnos.fer[di] = v; guardar(); if (TAB === 'remu') vRemu(); else if (TAB === 'turnos') vTurnos(); }
+function esCumple(p, di){ return !!(p && p.cumple && /^\d{4}-\d{2}-\d{2}$/.test(p.cumple) && p.cumple.slice(5) === di.slice(5)); }
 function ferNoTrab(di){ const v = ((S.turnos || {}).fer || {})[di]; return v === 'no' || (v !== 'si' && FER_IRR_SET.has(di)); }
 /* horario normal (sin cambios a mano) de un trabajador un día de la semana */
 function horarioBase(p, d, gm, di){
@@ -1976,6 +1978,7 @@ function horarioDia(p, d, lunesIso){
   if (cam) return { ...cam, cambiado: true };
   const di = fechaDia(lunesIso, d), h = horarioBase(p, d, gm, di);
   if (ferNoTrab(di)) return { libre: true, feriado: true, orig: h };
+  if (!h.libre && esCumple(p, di)) return { libre: true, cumple: true, orig: h }; // cumpleaños = día libre pagado, salvo que ya sea su día libre
   // supervisor: si el supervisor del otro turno está libre, hace las dos jornadas
   if (!h.libre && esDef(di) && p.cargo === 'Supervisor'){
     const otroLibre = S.personal.some(o => o.id !== p.id && o.cargo === 'Supervisor' && o.turno !== p.turno && horarioDia_simple(o, d, lunesIso, gm).libre);
@@ -1985,7 +1988,7 @@ function horarioDia(p, d, lunesIso){
 }
 function horarioDia_simple(p, d, lunesIso, gm){ const cam = ((S.turnos.cambios[lunesIso] || {})[p.id] || {})[d]; return cam || horarioBase(p, d, gm, fechaDia(lunesIso, d)); }
 function horasSemana(p, lunesIso){
-  let m = 0; for (let d = 0; d < 7; d++){ let h = horarioDia(p, d, lunesIso); if (h.feriado) h = h.orig; if (!h.libre && h.e && h.s) m += minutos(h.s) - minutos(h.e) - (h.c ? S.turnos.horario.colMin : 0); }
+  let m = 0; for (let d = 0; d < 7; d++){ let h = horarioDia(p, d, lunesIso); if (h.feriado || h.cumple) h = h.orig; if (!h.libre && h.e && h.s) m += minutos(h.s) - minutos(h.e) - (h.c ? S.turnos.horario.colMin : 0); }
   return m / 60;
 }
 const ASIST_T = { falta: 'FALTA', licencia: 'LICENCIA', vacaciones: 'VACACIONES', permiso: 'PERMISO', libre: 'NO TRABAJÓ' };
@@ -2036,6 +2039,7 @@ function vTurnos(){
   const celda = (p, d) => { const h = horarioDia(p, d, SEMANA), di = fechaDia(SEMANA, d), a = (S.turnos.asist[di] || {})[p.id] || {};
     const on = `data-k="${p.id}|${d}" onclick="selTurno('${p.id}|${d}')" ondblclick="editarTurno('${p.id}',${d})" title="Doble clic: cambiar el día o registrar asistencia"`;
     if (a.t && ASIST_T[a.t]) return `<td colspan="3" class="tasi tasi-${a.t}" ${on}>${ASIST_T[a.t]}</td>`;
+    if (h.cumple) return `<td colspan="3" class="tlibre" style="background:#fce7f3;color:#be185d" ${on} title="Día libre por cumpleaños (pagado)">🎂 CUMPLEAÑOS</td>`;
     if (h.feriado) return `<td colspan="3" class="tlibre" ${on} title="Feriado en que no se trabaja (pagado)">FERIADO</td>`;
     if (h.libre) return `<td colspan="3" class="tlibre ${h.cambiado ? 'tcam' : ''}" ${on}>LIBRE</td>`;
     const real = a.e && a.s, cls = (h.doble ? 'tdoble ' : '') + (h.cambiado ? 'tcam ' : '') + (real ? 'treal' : '');
@@ -2416,9 +2420,9 @@ function remuCalc(D, ym, hasta){ // hasta (opcional, 'AAAA-MM-DD'): calcula lo d
     const di = iso(d), lun = iso(lunesDe(d)), dw = (d.getDay() + 6) % 7, enMes = d >= primero && d <= ultimo;
     const h = horarioDia(p, dw, lun), r = D.reg[di] || ((S.turnos.asist[di] || {})[p.id]) || {};
     const fuera = di < cIni || di > cFin;
-    const hb = h.feriado ? h.orig : h; // feriado sin trabajar: se paga y cuenta como jornada cumplida
+    const hb = (h.feriado || h.cumple) ? h.orig : h; // feriado sin trabajar: se paga y cuenta como jornada cumplida
     const prog = (!fuera && !hb.libre && hb.e && hb.s) ? minutos(hb.s) - minutos(hb.e) - (hb.c ? colMin : 0) : 0;
-    let real = prog, est = fuera ? 'fuera' : h.feriado ? 'feriado' : h.libre ? 'libre' : 'turno', manual = false;
+    let real = prog, est = fuera ? 'fuera' : h.feriado ? 'feriado' : h.cumple ? 'cumple' : h.libre ? 'libre' : 'turno', manual = false;
     if (fuera){ dias.push({ di, dw, enMes, h, prog: 0, real: 0, est, manual: false, fer: feri.get(di), r }); continue; }
     if (r.t === 'falta' || r.t === 'licencia' || r.t === 'libre'){ real = 0; est = r.t; manual = true; }
     else if (r.t === 'vacaciones' || r.t === 'permiso'){ est = r.t; manual = true; }
@@ -2429,7 +2433,7 @@ function remuCalc(D, ym, hasta){ // hasta (opcional, 'AAAA-MM-DD'): calcula lo d
     if (enMes){
       if (est === 'falta') faltas.push(di); if (est === 'licencia') lics.push(di);
       if (c.atraso && r.e && h.e && !h.libre) atrMin += Math.max(0, minutos(r.e) - minutos(h.e));
-      if (real > 0 && est !== 'feriado' && (dw === 6 || fer)){ festDias++; festMin += real; }
+      if (real > 0 && est !== 'feriado' && est !== 'cumple' && (dw === 6 || fer)){ festDias++; festMin += real; }
     }
     dias.push({ di, dw, enMes, h, prog, real, est, manual, fer, r });
   }
@@ -2592,13 +2596,13 @@ function remuHtmlReg(D){
   const ym = REMU.ym, R = remuCalc(D, ym); if (R.err) return `<div class="card"><p class="warn">${R.err}</p></div>`;
   const ES = [['', 'Según turno'], ['falta', 'Falta'], ['licencia', 'Licencia médica'], ['vacaciones', 'Vacaciones'], ['permiso', 'Permiso con goce'], ['libre', 'No trabajé (aunque el turno decía)']];
   const hoyI = iso(new Date()), rows = R.dias.filter(x => x.enMes && x.est !== 'fuera').map(x => { // el registro parte el día de inicio del contrato (09-11-2026)
-    const r = x.r, hp = x.h.feriado ? '<span class="muted">feriado: no se trabaja</span>' : x.h.libre ? '<span class="muted">libre</span>' : `${x.h.e}–${x.h.s}`, fer = x.fer ? ` <span class="tag ${x.fer.irr ? 'REVISAR' : 'MEDIA'}" title="Feriado${x.fer.irr ? ' irrenunciable' : ''}">feriado${x.fer.irr ? ' irr.' : ''}</span>` : '';
+    const r = x.r, hp = x.h.cumple ? '<span style="color:#be185d">🎂 cumpleaños: libre</span>' : x.h.feriado ? '<span class="muted">feriado: no se trabaja</span>' : x.h.libre ? '<span class="muted">libre</span>' : `${x.h.e}–${x.h.s}`, fer = x.fer ? ` <span class="tag ${x.fer.irr ? 'REVISAR' : 'MEDIA'}" title="Feriado${x.fer.irr ? ' irrenunciable' : ''}">feriado${x.fer.irr ? ' irr.' : ''}</span>` : '';
     const dif = x.real - x.prog;
     return `<tr style="${x.di > hoyI ? 'opacity:.55' : x.dw === 6 ? 'background:#fff7ed' : ''}" ${x.di > hoyI ? 'title="Día futuro: se muestra lo programado"' : ''}><td>${x.di.slice(8)}/${x.di.slice(5, 7)}</td><td>${DIAS3[x.dw]}${fer}</td><td>${hp}</td>
       <td><input type="time" value="${r.e || ''}" onchange="remuReg('${x.di}','e',this.value)"></td><td><input type="time" value="${r.s || ''}" onchange="remuReg('${x.di}','s',this.value)"></td>
       <td><input style="width:54px" value="${r.c ?? ''}" placeholder="${x.h.c ? S.turnos.horario.colMin : 0}" onchange="remuReg('${x.di}','c',this.value)"></td>
       <td><select onchange="remuReg('${x.di}','t',this.value)">${ES.map(([k, l]) => `<option value="${k}" ${(r.t || '') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></td>
-      <td class="num">${fmt(x.real / 60, 2)} h${x.est === 'feriado' && x.real ? ' <span class="muted">(pagado)</span>' : ''}${dif ? ` <span style="color:${dif > 0 ? '#1d4ed8' : '#b91c1c'}">(${dif > 0 ? '+' : ''}${fmt(dif / 60, 2)})</span>` : ''}</td>
+      <td class="num">${fmt(x.real / 60, 2)} h${(x.est === 'feriado' || x.est === 'cumple') && x.real ? ' <span class="muted">(pagado)</span>' : ''}${dif ? ` <span style="color:${dif > 0 ? '#1d4ed8' : '#b91c1c'}">(${dif > 0 ? '+' : ''}${fmt(dif / 60, 2)})</span>` : ''}</td>
       <td>${x.manual && D.reg[x.di] ? `<button class="bx" title="Volver a lo que dice el turno" onclick="remuReg('${x.di}','t','');delete REMU.d.reg['${x.di}'];remuGuardar();vRemu()">✕</button>` : ''}</td></tr>`;
   }).join('');
   return `<div class="card"><p class="muted" style="margin-top:0">Si no ingresas nada en un día, se asume que trabajaste lo que dice tu turno (pestaña Turnos, con sus cambios). La asistencia que registras en Turnos (doble clic en el día) aparece aquí sola; lo que escribas aquí tiene prioridad. Ingresa entrada y salida reales solo cuando difieran (horas extra, cambio de horario) o marca el estado del día.</p>
