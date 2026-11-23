@@ -2219,12 +2219,22 @@ function catCSV(t){
 }
 const CAT_COLORES = new Set('BLANCO NEGRO BEIGE GRIS GRAFITO MADERA ROBLE OSCURO CLARO VERDE AZUL ROJO CAFE CAOBA NOGAL CEDRO ARENA MARFIL TERRACOTA AMARILLO NARANJO'.split(' '));
 function catToks(d){ return norm(d).split(/[^A-Z0-9.,]+/).filter(t => t && !CAT_COLORES.has(t)); }
-function catEstimar(desc){
-  const A = catToks(desc), SA = new Set(A), numA = A.filter(t => /\d/.test(t)); let best = null, bs = 0;
+let CAT_IX = null;
+function catIndice(){ // se arma una sola vez: tokens de cada producto de referencia, agrupados por sus números (medidas)
+  if (CAT_IX && CAT_IX.n === PRODUCTOS.length) return CAT_IX.m;
+  const m = new Map();
   for (const p of PRODUCTOS){
     const cf = p[7]; if (!(p[2] > 0) || cf === 'ESTIMADO' || cf === 'REVISAR') continue;
-    const B = catToks(p[1]); if (!B.length) continue; const SB = new Set(B);
-    if (numA.some(t => !SB.has(t)) || B.filter(t => /\d/.test(t)).some(t => !SA.has(t))) continue;
+    const B = catToks(p[1]); if (!B.length) continue;
+    const key = [...new Set(B.filter(t => /\d/.test(t)))].sort().join('|');
+    let l = m.get(key); if (!l) m.set(key, l = []); l.push({ p, SB: new Set(B) });
+  }
+  CAT_IX = { n: PRODUCTOS.length, m }; return m;
+}
+function catEstimar(desc){
+  const A = catToks(desc), SA = new Set(A); let best = null, bs = 0;
+  const key = [...new Set(A.filter(t => /\d/.test(t)))].sort().join('|');
+  for (const { p, SB } of (catIndice().get(key) || [])){
     let i = 0; SA.forEach(t => { if (SB.has(t)) i++; }); const sc = i / (SA.size + SB.size - i);
     if (sc > bs){ bs = sc; best = p; }
   }
@@ -2232,7 +2242,7 @@ function catEstimar(desc){
   const e = estimarDesc(desc); const l = e.largo || .3, side = Math.sqrt(Math.max(e.vol, .0001) / l);
   return { peso: +e.peso.toFixed(3), largo: l, ancho: +side.toFixed(3), alto: +side.toFixed(3), vol: +e.vol.toFixed(4), conf: e.conf === 'REVISAR' ? 'ESTIMADO' : e.conf, ref: '' };
 }
-function catAnalizar(rows){
+async function catAnalizar(rows, prog){
   const h = rows[0].map(x => catLimpia(x).toUpperCase()), ic = h.indexOf('CODIGOFH'), id = h.indexOf('DESCRIPCION'), ia = h.indexOf('AREAGEN'), idc = h.indexOf('DESCONTINUADO');
   if (ic < 0 || id < 0) return null;
   const data = rows.slice(1).map(r => ({ c: catLimpia(r[ic]), d: catLimpia(r[id]), a: ia < 0 ? null : ({ '1': 'S', '2': 'B' })[catLimpia(r[ia])] || null, dis: idc >= 0 && /^SI$/i.test(catLimpia(r[idc])) })).filter(x => x.c && x.d);
@@ -2240,7 +2250,9 @@ function catAnalizar(rows){
   for (const p of PRODUCTOS){ const k = catDK(p[1]); if (!idx.has(k)) idx.set(k, []); idx.get(k).push(p); }
   const out = { nuevos: [], codigo: [], desc: [], area: [], iguales: 0, total: data.length, sinArea: !data.some(x => x.a) };
   const vistos = new Set();
+  let ii = 0;
   for (const x of data){
+    if (prog && ++ii % 150 === 0){ prog('Comparando productos… ' + ii.toLocaleString('es-CL') + ' de ' + data.length.toLocaleString('es-CL')); await new Promise(r => setTimeout(r, 0)); }
     const k = norm(x.c); if (vistos.has(k)) continue; vistos.add(k);
     const p = PMAP.get(k);
     if (p){
@@ -2256,13 +2268,28 @@ function catAnalizar(rows){
   }
   return out;
 }
+function catBusy(msg){
+  let o = document.getElementById('catBusy');
+  if (!o){ o = document.createElement('div'); o.id = 'catBusy'; o.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99999;display:flex;align-items:center;justify-content:center';
+    o.innerHTML = '<div style="background:#fff;border-radius:12px;padding:22px 30px;text-align:center;min-width:280px;box-shadow:0 8px 30px rgba(0,0,0,.3)"><div style="width:42px;height:42px;margin:0 auto 12px;border:5px solid #dbe3f3;border-top-color:#1F3864;border-radius:50%;animation:catSpin 1s linear infinite"></div><div id="catBusyT" style="font-size:16px;font-weight:600;color:#1F3864"></div><div style="font-size:12px;color:#64748b;margin-top:6px">No cierres ni recargues la página</div></div><style>@keyframes catSpin{to{transform:rotate(360deg)}}</style>';
+    document.body.appendChild(o); }
+  document.getElementById('catBusyT').textContent = msg;
+}
+function catBusyOff(){ const o = document.getElementById('catBusy'); if (o) o.remove(); }
+const catPausa = () => new Promise(r => setTimeout(r, 30));
 async function catCargar(f){
   if (!f) return;
+  const t0 = performance.now();
   try {
-    const rows = catCSV(await catTexto(f)); const r = catAnalizar(rows);
-    if (!r){ toast('No encuentro las columnas CodigoFH y Descripcion en ese archivo', 4000); return; }
-    CATU = r; CATU.archivo = f.name; pintarCat();
-  } catch(e){ toast('No pude leer el archivo: ' + e.message, 4000); }
+    catBusy('Leyendo el archivo…'); await catPausa();
+    const rows = catCSV(await catTexto(f));
+    catBusy('Armando el índice del catálogo…'); await catPausa();
+    const r = await catAnalizar(rows, catBusy);
+    if (!r){ catBusyOff(); toast('No encuentro las columnas CodigoFH y Descripcion en ese archivo', 4000); return; }
+    catBusy('Preparando la lista de cambios…'); await catPausa();
+    CATU = r; CATU.archivo = f.name; pintarCat(); catBusyOff();
+    toast('Listo: comparación terminada en ' + ((performance.now() - t0) / 1000).toFixed(1) + ' s', 3500);
+  } catch(e){ catBusyOff(); toast('No pude leer el archivo: ' + e.message, 4000); }
 }
 function catPend(){ return S.cat.nuevos.filter(q => !S.overrides[norm(q.c)]); }
 function catCopiar(){
@@ -2274,7 +2301,8 @@ function catCopiar(){
 function catSetAcc(g, i, v){ CATU[g][i].acc = v; }
 function catTodos(g, v){ CATU[g].forEach(x => x.acc = v); pintarCat(); }
 function catNuevoCampo(i, k, v){ const q = CATU.nuevos[i]; if (k === 'inc') q.inc = v; else if (k === 'a') q.a = v; else { q[k] = n(v); q.vol = +(q.largo * q.ancho * q.alto || q.vol).toFixed(4); if (k === 'peso') q.conf = 'EDITADO'; } }
-function catAplicar(){
+function catAplicar(){ catBusy('Aplicando cambios y guardando…'); setTimeout(() => { try { catAplicar2(); } finally { catBusyOff(); } }, 50); }
+function catAplicar2(){
   if (!CATU) return; const C = S.cat, e = S.estanteria; let nn = 0, nc = 0, nd = 0, na = 0;
   const mod = k => C.mods[k] = C.mods[k] || {};
   const addNuevo = q => { C.nuevos.push({ c: q.c, d: q.d, a: q.a, peso: q.peso, largo: q.largo, ancho: q.ancho, alto: q.alto, vol: q.vol, conf: q.conf, ref: q.ref || '', fecha: hoy(), por: USER.u }); nn++; };
@@ -2385,10 +2413,19 @@ async function remuAbrir(pin){
 }
 function remuBloquear(){ REMU.d = null; REMU.key = null; clearTimeout(REMU.timer); }
 function remuTick(){ clearTimeout(REMU.timer); REMU.timer = setTimeout(() => { if (REMU.d){ remuBloquear(); if (TAB === 'remu') vRemu(); toast('Remuneración bloqueada por inactividad'); } }, 5 * 60 * 1000); }
-function remuEsperado(D, ym, hasta){ // lo que "debería" recibir: contrato con el monto acordado (670) como base; el resto de los cálculos legales usa el contrato
-  const c = D.c, r0 = n(c.ref); if (!r0) return null; const R0 = remuCalc(D, ym, hasta); if (R0.err) return null;
-  if (c.refTipo === 'base'){ const x = remuCalc({ ...D, c: { ...c, base: r0 } }, ym, hasta); return x.err ? null : { v: x.liquido, txt: 'Debería recibir (sueldo base ' + clp(r0) + (x.diasC < 30 ? ', proporcional a ' + x.diasC + '/30 días' : '') + ')' }; }
-  return { v: r0 * R0.diasC / 30, txt: 'Debería recibir: ' + clp(r0) + ' líquidos por mes completo' + (R0.diasC < 30 ? ', proporcional a ' + R0.diasC + '/30 días' : '') };
+function remuRefNombre(c){ const r = n(c.ref), t = c.refTipo || 'liquido'; return t === 'base' ? 'sueldo base ' + clp(r) : t === 'bono' ? 'base ' + clp(n(c.base)) + ' + bono NO imponible ' + clp(Math.max(0, r - n(c.base))) : t === 'bonoimp' ? 'base ' + clp(n(c.base)) + ' + bono imponible ' + clp(Math.max(0, r - n(c.base))) : clp(r) + ' líquidos'; }
+function remuEsperado(D, ym, hasta, tipo){ // lo que "debería" recibir según cómo se interprete el monto acordado (tipo opcional para comparar escenarios)
+  const c = D.c, r0 = n(c.ref), t = tipo || c.refTipo || 'liquido'; if (!r0) return null; const R0 = remuCalc(D, ym, hasta); if (R0.err) return null;
+  const pro = R0.diasC < 30 ? ', proporcional a ' + R0.diasC + '/30 días' : '';
+  if (t === 'base'){ const x = remuCalc({ ...D, c: { ...c, base: r0 } }, ym, hasta); return x.err ? null : { v: x.liquido, txt: 'Debería recibir (sueldo base ' + clp(r0) + pro + ')' }; }
+  if (t === 'bono' || t === 'bonoimp'){ const dif = Math.max(0, r0 - n(c.base)) * R0.diasC / 30, b = { n: 'Bono acordado', m: dif, imp: t === 'bonoimp' }; const x = remuCalc({ ...D, c: { ...c, bonos: [...c.bonos, b] } }, ym, hasta); return x.err ? null : { v: x.liquido, txt: 'Debería recibir (' + remuRefNombre(c).replace(/^.*?base/, 'base') + pro + ')' }; }
+  return { v: r0 * R0.diasC / 30, txt: 'Debería recibir: ' + clp(r0) + ' líquidos por mes completo' + pro };
+}
+function remuEscenarios(D, ym){ // todas las lecturas posibles del acuerdo de palabra, para ver cuál calza con lo que realmente pagaron
+  const R = remuCalc(D, ym); if (R.err) return [];
+  const L = [{ k: 'contrato', n: 'Solo contrato escrito (sueldo ' + clp(n(D.c.base)) + ', sin bono)', v: R.liquido }];
+  if (n(D.c.ref)){ [['base', 'El monto acordado es el sueldo base'], ['bono', 'Base del contrato + bono NO imponible'], ['bonoimp', 'Base del contrato + bono imponible'], ['liquido', 'El monto acordado es el líquido']].forEach(([k, nm]) => { const e = remuEsperado(D, ym, undefined, k); if (e) L.push({ k, n: nm, v: e.v }); }); }
+  return L;
 }
 function remuMigrar(D){ // completa datos del contrato en registros guardados antes de tenerlo (no pisa lo ya ingresado, salvo base en 0)
   if (D.v2) return; const c = D.c;
@@ -2453,6 +2490,7 @@ function remuCalc(D, ym, hasta){ // hasta (opcional, 'AAAA-MM-DD'): calcula lo d
   const heVal = heMin / 60 * vHE;
   let festVal = 0;
   if (c.fest === 'recargo') festVal = festMin / 60 * vHora * n(c.festV) / 100;
+  if (c.fest === 'he') festVal = festMin / 60 * vHE;
   if (c.fest === 'dia') festVal = festDias * n(c.festV) * vDia;
   const atrVal = atrMin / 60 * vHora;
   let grat = 0; const topeGr = n(par.imm) * n(par.tgr, 4.75) / 12;
@@ -2476,7 +2514,7 @@ function remuCalc(D, ym, hasta){ // hasta (opcional, 'AAAA-MM-DD'): calcula lo d
   if (faltas.length) det.push(`Faltas: ${faltas.length} día(s) → descuento ${clp(faltas.length * vDia)}`);
   if (lics.length) det.push(`Licencia médica: ${lics.length} día(s) → el empleador no paga (${clp(lics.length * vDia)}); lo cubre el subsidio, que no está en este cálculo`);
   if (atrMin) det.push(`Atrasos: ${atrMin} min → descuento ${clp(atrVal)}`);
-  det.push(`Domingos/festivos trabajados: ${festDias} día(s), ${fmt(festMin / 60, 2)} h · modalidad: ${{ ninguno: 'sin pago extra (se compensa con descanso)', recargo: 'recargo ' + n(c.festV) + ' % sobre la hora', dia: n(c.festV) + ' día(s) extra por cada uno' }[c.fest]}`);
+  det.push(`Domingos/festivos trabajados: ${festDias} día(s), ${fmt(festMin / 60, 2)} h · modalidad: ${{ ninguno: 'sin pago extra (se compensa con descanso)', recargo: 'pago adicional de ' + n(c.festV) + ' % sobre el valor hora', he: 'se pagan como hora extra (+' + n(c.rec, 50) + ' %) además del sueldo', dia: n(c.festV) + ' día(s) extra por cada uno' }[c.fest]}`);
   det.push(`Gratificación legal (art. 50): 25 % de ${clp(sueldo + bonosImp)} con tope mensual ${clp(topeGr)} (${n(par.tgr, 4.75)} IMM ÷ 12)`);
   det.push(`Base del impuesto único: ${clp(baseTrib)} (imponible − AFP − salud 7 % − cesantía) · tramo ${tramo + 1}${tramo === 0 ? ' (exento)' : ''}`);
   return { diasC, dias, sueldo, descFalt, grat, heMin, heVal, festVal, bonosImp, bonosNo, noimp, atrVal, imponible, afp, salud, salud7, ces, imp, haberes, descLeg, otros, otrosFijos, aj, liquido, det, vDia, vHora, vHE, topeAfp, baseTrib };
@@ -2547,7 +2585,7 @@ function remuHtmlLiq(D){
       <tr><td>Días trabajados · horas registradas</td><td class="num">${dt} · ${fmt(hrs / 60, 1)} h</td></tr>
       ${RA.heVal ? `<tr><td>Horas extra a la fecha</td><td class="num">${clp(RA.heVal)}</td></tr>` : ''}
       <tr><td><b>Líquido a la fecha (contrato escrito)</b></td><td class="num"><b>${clp(RA.liquido)}</b></td></tr>
-      ${refA ? `<tr><td><b>Líquido a la fecha que debería recibir</b> <span class="muted">(base ${clp(n(c.ref))}, proporcional)</span></td><td class="num" style="font-size:18px;color:#1F3864"><b>${clp(refA.v)}</b></td></tr>` : ''}
+      ${refA ? `<tr><td><b>Líquido a la fecha que debería recibir</b> <span class="muted">(${remuRefNombre(c)}, proporcional)</span></td><td class="num" style="font-size:18px;color:#1F3864"><b>${clp(refA.v)}</b></td></tr>` : ''}
       </tbody></table><p class="muted">Se actualiza solo con cada día que pasa y con lo que registres en Turnos (doble clic en el día) o en Registro diario. La liquidación completa del mes está más abajo.</p></div>`; })() : '';
   const refCard = refL ? `<div class="card"><h3 style="margin-top:0">Lo que debería recibir vs. contrato</h3><table style="max-width:640px"><tbody>
       <tr><td>Líquido según contrato escrito (sueldo ${clp(n(c.base))})</td><td class="num">${clp(R.liquido)}</td></tr>
@@ -2579,8 +2617,11 @@ function remuHtmlLiq(D){
     ${tot('TOTAL DESCUENTOS', R.descLeg + R.otros)}
     <tr><td style="font-size:17px"><b>LÍQUIDO A RECIBIR</b></td><td class="num" style="font-size:20px;color:#1F3864"><b>${clp(R.liquido)}</b></td></tr>
     </tbody></table></div>
-    ${(() => { const f = '2026-12', a = remuCalc(D, f), b = remuEsperado(D, f); if (a.err || !b) return ''; return `<div class="card"><h3 style="margin-top:0">Mes normal completo (sin horas extra)</h3><table style="max-width:640px"><tbody><tr><td>Líquido con el contrato escrito (${clp(n(c.base))})</td><td class="num">${clp(a.liquido)}</td></tr><tr><td><b>Líquido que debería recibir (base ${clp(n(c.ref))})</b></td><td class="num"><b>${clp(b.v)}</b></td></tr></tbody></table></div>`; })()}
+    ${(() => { const f = '2026-12', a = remuCalc(D, f), b = remuEsperado(D, f); if (a.err || !b) return ''; return `<div class="card"><h3 style="margin-top:0">Mes normal completo (sin horas extra)</h3><table style="max-width:640px"><tbody><tr><td>Líquido con el contrato escrito (${clp(n(c.base))})</td><td class="num">${clp(a.liquido)}</td></tr><tr><td><b>Líquido que debería recibir (${remuRefNombre(c)})</b></td><td class="num"><b>${clp(b.v)}</b></td></tr></tbody></table></div>`; })()}
     ${refCard}
+    ${(() => { const E = remuEscenarios(D, ym); if (E.length < 2) return ''; const best = rec ? E.reduce((a, b) => Math.abs(b.v - rec.liq) < Math.abs(a.v - rec.liq) ? b : a) : null;
+      return `<div class="card"><h3 style="margin-top:0">¿Cómo se interpreta el acuerdo? (escenarios de ${ym})</h3><table style="max-width:640px"><thead><tr><th>Escenario</th><th class="num">Líquido calculado</th>${rec ? '<th class="num">Diferencia con lo recibido</th>' : ''}</tr></thead><tbody>${E.map(x => { const d = rec ? rec.liq - x.v : 0; const ok = best && x.k === best.k && Math.abs(d) < 1500; return `<tr${ok ? ' style="background:#e8f5e9"' : ''}><td>${ok ? '✔ ' : ''}${x.n}</td><td class="num">${clp(x.v)}</td>${rec ? `<td class="num">${clp(d)}</td>` : ''}</tr>`; }).join('')}</tbody></table>
+      <p class="muted">${rec ? (Math.abs(rec.liq - best.v) < 1500 ? 'El escenario marcado calza con lo que te pagaron (diferencia menor a $1.500). Selecciónalo en “Contrato y parámetros → El monto acordado es” y la app lo usará de ahora en adelante.' : 'Ningún escenario calza con tu liquidación (diferencia mayor a $1.500). Revisa la liquidación línea por línea: horas extra, bonos, descuentos extra, días trabajados, valor UF de AFP, o si hay otro haber que no esté cargado.') : 'Ingresa más abajo el líquido que recibiste y la app marcará qué lectura del acuerdo calza.'}</p></div>`; })()}
     <div class="card"><h3 style="margin-top:0">Comparar con lo que me pagaron</h3><div class="row">
       <label>Líquido que recibí realmente<input value="${rec ? rec.liq : ''}" placeholder="monto" onchange="remuRec('${ym}',this.value)"></label>
       <label>Anticipo / préstamo del mes<input value="${aj.ant || ''}" onchange="remuAj('${ym}','ant',this.value)"></label>
@@ -2620,8 +2661,8 @@ function remuHtmlCon(D){
     <div class="row"><label>AFP<select onchange="remuSet('c.afp',this.value);remuSet('c.afpC',REMU_AFP[this.value])">${Object.keys(REMU_AFP).map(k => `<option ${k === c.afp ? 'selected' : ''}>${k}</option>`).join('')}</select></label>${I('c.afpC', 'Comisión AFP %', c.afpC, 'n', 70)}${I('c.afpT', 'Cotización obligatoria %', c.afpT, 'n', 70)}
       ${S2('c.salud', 'Salud', c.salud, [['fonasa', 'Fonasa (7 %)'], ['isapre', 'Isapre (plan en UF)']])}${c.salud === 'isapre' ? I('c.plan', 'Plan Isapre (UF)', c.plan, 'n', 80) : ''}
       <label><span><input type="checkbox" ${c.ces ? 'checked' : ''} onchange="remuSet('c.ces',this.checked,'b')"> Descontar cesantía 0,6 % (solo contrato indefinido; en plazo fijo paga el empleador)</span></label></div>
-    <div class="row">${I('c.ref', 'Monto acordado de palabra $', c.ref || 0)}${S2('c.refTipo', 'El monto acordado es', c.refTipo || 'liquido', [['liquido', 'Líquido mensual (mes completo)'], ['base', 'Sueldo base']])}</div>
-    <div class="row">${S2('c.fest', 'Domingo / festivo trabajado', c.fest, [['ninguno', 'Sin pago extra (se compensa con descanso)'], ['recargo', 'Recargo % sobre la hora'], ['dia', 'Días extra de sueldo por cada uno']])}${c.fest !== 'ninguno' ? I('c.festV', c.fest === 'recargo' ? 'Recargo %' : 'Días extra', c.festV, 'n', 70) : ''}
+    <div class="row">${I('c.ref', 'Monto acordado de palabra $', c.ref || 0)}${S2('c.refTipo', 'El monto acordado es', c.refTipo || 'liquido', [['liquido', 'Líquido mensual (mes completo)'], ['base', 'Sueldo base'], ['bono', 'Bono NO imponible (sobre la base del contrato)'], ['bonoimp', 'Bono imponible (sobre la base del contrato)']])}</div>
+    <div class="row">${S2('c.fest', 'Domingo / festivo trabajado', c.fest, [['ninguno', 'Sin pago extra (se compensa con descanso)'], ['he', 'Como hora extra (valor hora + recargo HE, además del sueldo)'], ['recargo', 'Pago adicional % sobre el valor hora (100 = doble, 150 = como HE)'], ['dia', 'Días extra de sueldo por cada uno']])}${(c.fest === 'recargo' || c.fest === 'dia') ? I('c.festV', c.fest === 'recargo' ? 'Pago adicional %' : 'Días extra', c.festV, 'n', 70) : ''}
       <label><span><input type="checkbox" ${c.atraso ? 'checked' : ''} onchange="remuSet('c.atraso',this.checked,'b')"> Descontar atrasos (entrada real después de la programada)</span></label></div>
     ${lista('c.bonos', c.bonos, 'Bonos y asignaciones', true)}${lista('c.noimp', c.noimp, 'No imponibles (colación, movilización, etc.)', false)}${lista('c.otros', c.otros, 'Otros descuentos fijos mensuales (sindicato, cuotas, etc.)', false)}</div>
     <div class="card"><h3 style="margin-top:0">Parámetros legales (se actualizan)</h3><div class="row">${I('par.uf', 'Valor UF $', par.uf)}${I('par.utm', 'Valor UTM $', par.utm)}${I('par.imm', 'Ingreso mínimo $', par.imm)}${I('par.tope', 'Tope imponible AFP/salud (UF)', par.tope, 'n', 80)}${I('par.topeC', 'Tope cesantía (UF)', par.topeC, 'n', 80)}${I('par.tgr', 'Tope gratificación (IMM)', par.tgr, 'n', 70)}</div>
