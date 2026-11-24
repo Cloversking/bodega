@@ -1130,6 +1130,75 @@ function estColProd(c, v){
   else { delete p.colFijo; p.col = null; estColores(e, false); toast('Volvió al color automático'); }
   guardar(); if ($('#pmModal')) pmRender(); vEstanteria();
 }
+
+/* ===================== PROPUESTAS DE ESTANTERÍA (guardar / cargar varias) =====================
+   S.estProps = [{ id, nombre, desde, hasta, fecha, por, auto?, prods, celdas, cant }]: foto de los casilleros de un rango de columnas. */
+const epCol = id => parseInt(id, 10);
+function epTot(){ return S.estanteria.tramos.reduce((a, t) => a + t.cols, 0); }
+function epFoto(nombre, desde, hasta, auto){
+  const e = estInit(), celdas = {}, cant = {}, prods = {};
+  Object.entries(e.celdas).forEach(([id, l]) => { const c = epCol(id); if (c >= desde && c <= hasta && l.length){ celdas[id] = l.slice(); if (e.cant[id]) cant[id] = Object.assign({}, e.cant[id]); l.forEach(k => { if (e.prods[k]) prods[k] = Object.assign({}, e.prods[k]); }); } });
+  return { id: uid(), nombre, desde, hasta, fecha: new Date().toLocaleString('es-CL'), por: (typeof USER !== 'undefined' && USER) ? USER.u : '', auto: !!auto, prods, celdas, cant };
+}
+function epAbrir(){
+  S.estProps = S.estProps || []; let m = $('#epModal'); if (m) m.remove();
+  m = document.createElement('div'); m.id = 'epModal'; document.body.appendChild(m);
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(17,24,39,.55);z-index:95;display:flex;align-items:flex-start;justify-content:center;padding:40px 12px';
+  m.onclick = ev => { if (ev.target === m) epCerrar(); };
+  epRender(); setTimeout(() => { const i = $('#epN'); if (i) i.focus(); }, 30);
+}
+function epCerrar(){ const m = $('#epModal'); if (m) m.remove(); }
+function epRender(){
+  const m = $('#epModal'); if (!m) return; const L = S.estProps || [], tot = epTot();
+  const fila = (p, i) => `<tr ${p.auto ? 'style="color:#6b7280"' : ''}><td><b>${esc(p.nombre)}</b><div class="muted" style="font-size:11px">${esc(p.fecha)}${p.por ? ' · ' + esc(p.por) : ''}</div></td>
+      <td style="white-space:nowrap">${p.desde === 1 && p.hasta === tot ? 'Toda' : `Col. ${p.desde}–${p.hasta}`}</td><td class="num">${Object.keys(p.celdas).length}</td>
+      <td style="white-space:nowrap"><button class="b" style="padding:3px 10px" onclick="epCargar(${i})">📂 Cargar</button> <button class="b2" title="Reemplazar esta propuesta con lo que hay ahora en la estantería" onclick="epActualizar(${i})">💾 Actualizar</button> <button class="b2" title="Cambiar nombre" onclick="epRenombrar(${i})">✏</button> <button class="bx" title="Borrar" onclick="epBorrar(${i})">🗑</button></td></tr>`;
+  m.innerHTML = `<div style="background:#fff;border-radius:10px;max-width:860px;width:100%;max-height:calc(100vh - 80px);overflow:auto;box-shadow:0 10px 30px #0006;padding:14px 18px">
+    <div class="row" style="align-items:center"><h3 style="flex:1;margin:0;color:var(--az)">📂 Propuestas de estantería</h3><button class="b2" onclick="epCerrar()">Cerrar</button></div>
+    <p class="muted" style="margin:4px 0 8px">Guarda lo que hay ahora en los casilleros con un nombre y vuelve a cargarlo cuando quieras. Puedes guardar toda la estantería o solo un rango de columnas (ej: 28 a 30 para "PVC sanitario propuesta 1"): al cargarla solo se cambian esas columnas.</p>
+    <div class="row" style="align-items:flex-end;flex-wrap:wrap;padding:8px;border:1px solid #e5e7eb;border-radius:8px;background:#f8faff">
+      <label style="flex:1;min-width:240px">Nombre<input id="epN" placeholder="ej: PVC sanitario propuesta 1" onkeydown="if(event.key==='Enter')epGuardar()"></label>
+      <label>Desde col.<input type="number" id="epD" min="1" max="${tot}" value="1" style="width:70px"></label>
+      <label>Hasta col.<input type="number" id="epH" min="1" max="${tot}" value="${tot}" style="width:70px"></label>
+      <button class="b" onclick="epGuardar()">💾 Guardar lo actual</button></div>
+    <h4 style="margin:12px 0 4px">Guardadas (${L.filter(p => !p.auto).length})</h4>
+    ${L.some(p => !p.auto) ? `<table><thead><tr><th>Nombre</th><th>Columnas</th><th class="num">Casilleros</th><th></th></tr></thead><tbody>${L.map((p, i) => p.auto ? '' : fila(p, i)).join('')}</tbody></table>` : '<p class="muted">Todavía no guardas ninguna propuesta.</p>'}
+    ${L.some(p => p.auto) ? `<h4 style="margin:12px 0 4px">Respaldos automáticos <span class="muted" style="font-weight:normal">(se guarda uno antes de cada carga; quedan los últimos 5)</span></h4><table><tbody>${L.map((p, i) => p.auto ? fila(p, i) : '').join('')}</tbody></table>` : ''}
+    <h4 style="margin:12px 0 4px">Del Excel</h4>
+    <table><tbody><tr><td><b>Excel 24-11-2026 (hoja "Plano v2 (2)")</b><div class="muted" style="font-size:11px">Reemplaza toda la estantería y desmarca los productos de la base que no están en el Excel</div></td><td><button class="b2" onclick="epCerrar();estAplicarPropuesta()">📂 Cargar</button></td></tr></tbody></table>
+  </div>`;
+}
+function epRango(){
+  const tot = epTot(); let d = Math.round(+$('#epD').value || 1), h = Math.round(+$('#epH').value || tot);
+  d = Math.max(1, Math.min(d, tot)); h = Math.max(1, Math.min(h, tot)); if (d > h) [d, h] = [h, d]; return [d, h];
+}
+function epGuardar(){
+  const n = String($('#epN').value || '').trim(); if (!n) return toast('Escribe un nombre para la propuesta');
+  const [d, h] = epRango(), L = S.estProps = S.estProps || [], i = L.findIndex(p => !p.auto && norm(p.nombre) === norm(n));
+  if (i >= 0 && !confirm(`Ya existe "${L[i].nombre}". ¿Reemplazarla con lo que hay ahora?`)) return;
+  const f = epFoto(n, d, h); if (!Object.keys(f.celdas).length && !confirm(`Las columnas ${d}–${h} están vacías. ¿Guardar igual?`)) return;
+  if (i >= 0) L[i] = f; else L.push(f);
+  guardar(); toast(`Propuesta "${n}" guardada (${Object.keys(f.celdas).length} casilleros)`); epRender();
+}
+function epActualizar(i){
+  const p = S.estProps[i]; if (!confirm(`¿Reemplazar "${p.nombre}" con lo que hay ahora en las columnas ${p.desde}–${p.hasta}?`)) return;
+  S.estProps[i] = Object.assign(epFoto(p.nombre, p.desde, p.hasta), { id: p.id }); guardar(); toast('Propuesta actualizada'); epRender();
+}
+function epRenombrar(i){ const p = S.estProps[i], n = prompt('Nuevo nombre:', p.nombre); if (!n || !n.trim()) return; p.nombre = n.trim(); p.auto = false; guardar(); epRender(); }
+function epBorrar(i){ const p = S.estProps[i]; if (!confirm(`¿Borrar la propuesta "${p.nombre}"?`)) return; S.estProps.splice(i, 1); guardar(); epRender(); }
+function epCargar(i){
+  const p = S.estProps[i], e = estInit();
+  if (!confirm(`¿Cargar "${p.nombre}"?\n\nSe reemplaza lo que hay en las columnas ${p.desde}–${p.hasta}. El resto de la estantería no cambia.\nAntes se guarda un respaldo automático de esas columnas.`)) return;
+  const L = S.estProps; L.push(epFoto(`Antes de cargar "${p.nombre}"`, p.desde, p.hasta, true));
+  const autos = L.filter(x => x.auto); while (autos.length > 5){ L.splice(L.indexOf(autos.shift()), 1); }
+  Object.keys(e.celdas).forEach(id => { const c = epCol(id); if (c >= p.desde && c <= p.hasta){ delete e.celdas[id]; delete e.cant[id]; } });
+  if (!e.sigN) e.sigN = Math.max(0, ...Object.values(e.prods).map(x => x.n || 0)) + 1;
+  Object.entries(p.prods).forEach(([k, v]) => { if (!e.prods[k]) e.prods[k] = Object.assign({}, v, { n: e.sigN++ }); else if (v.man || v.colFijo) Object.assign(e.prods[k], { d: v.d, man: v.man, col: v.col, colFijo: v.colFijo, lab: v.lab }); });
+  Object.entries(p.celdas).forEach(([id, l]) => { e.celdas[id] = l.filter(k => e.prods[k]); });
+  Object.entries(p.cant || {}).forEach(([id, q]) => { e.cant[id] = Object.assign({}, q); });
+  EST_SEL = []; EST_ACT = EST_MOV = null; estColores(e, false); guardar();
+  epCerrar(); vEstanteria(); toast(`Propuesta "${p.nombre}" cargada`);
+}
 function estRestaurar(f){
   if (!f) return; const r = new FileReader();
   r.onload = () => { try { const x = JSON.parse(r.result); if (!x || !x.prods || !x.celdas) throw 0;
@@ -1493,7 +1562,7 @@ function vEstanteriaHTML(){
   const kp = (t, v, x) => `<div class="card" style="margin:0;padding:6px 12px"><div class="muted">${t}</div><b style="font-size:18px">${v}</b>${x || ''}</div>`;
   $('#main').innerHTML = `<div class="row noprint" style="margin-bottom:8px;gap:6px;align-items:center;flex-wrap:wrap"><span style="font-weight:bold;color:var(--az);font-size:18px;flex:1">🗄 Estantería</span>
       ${kp('Productos ubicados', ubic)}${kp('Casilleros usados / libres', `${usadas} / ${cel.length - usadas}`, ` <span class="muted">(${totalCol} col · ${(largo / 100).toFixed(2).replace('.', ',')} m)</span>`)}
-      <button class="b2" onclick="estConfAbrir()">⚙ Colores y medidas</button><button class="b2" onclick="estLimpiar()">🧹 Limpiar</button><button class="b2" onclick="estAplicarPropuesta()" title="Carga la distribución propuesta del 24-11-2026">📥 Distribución propuesta</button><button class="b2" onclick="document.getElementById('estRestIn').click()" title="Vuelve a cargar un respaldo descargado">↩ Restaurar respaldo</button><input type="file" id="estRestIn" accept=".json" class="hide" onchange="estRestaurar(this.files[0]);this.value=''"><button class="b" onclick="estDlgImprimir()">🖨 Imprimir</button></div>
+      <button class="b2" onclick="estConfAbrir()">⚙ Colores y medidas</button><button class="b2" onclick="estLimpiar()">🧹 Limpiar</button><button class="b2" onclick="epAbrir()" title="Guardar y cargar propuestas de la estantería">📂 Propuestas</button><button class="b2" onclick="document.getElementById('estRestIn').click()" title="Vuelve a cargar un respaldo descargado">↩ Restaurar respaldo</button><input type="file" id="estRestIn" accept=".json" class="hide" onchange="estRestaurar(this.files[0]);this.value=''"><button class="b" onclick="estDlgImprimir()">🖨 Imprimir</button></div>
     <div id="estImpBox"></div>
     ${panel('plano', '🗺 Estantería', pPlano)}
     ${panel('busca', '🔎 Buscador de productos', pBusca)}
