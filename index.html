@@ -924,13 +924,20 @@ function estGrupo(c, modo){ // devuelve [clave, color, texto corto, texto largo]
 }
 /* Dibujo de frente. Ancho a escala; alto dibujado más alto para que se lean las etiquetas. */
 function estSVG(desde, hasta, o){
-  const e = estInit(), cel = estCeldas(), SX = 1.3, K0 = o.imp ? 1.95 : 1.9, top = 30, izq = 52, modo = o.modo, bn = !o.color;
+  const e = estInit(), cel = estCeldas(), K0 = o.imp ? 1.95 : 1.9, top = 30, izq = 52, modo = o.modo, bn = !o.color; let SX = 1.3;
   const cs = cel.filter(c => c.col >= desde && c.col <= hasta);
   const x0 = Math.min(...cs.map(c => c.x)), x1 = Math.max(...cs.map(c => c.x + c.w));
   const H = Math.max(...e.tramos.map(t => t.niveles.reduce((a, b) => a + b, 0)));
-  const W = izq + (x1 - x0) * SX + 10, K = o.imp && o.pw ? Math.max(K0, Math.min(5.5, ((o.h / o.pw) * W - top - 34) / H)) : K0, alto = top + H * K + 34;
+  const kDe = w => Math.max(K0, Math.min(5.5, ((o.h / o.pw) * w - top - 34) / H));
+  let W = izq + (x1 - x0) * SX + 10, K = o.imp && o.pw ? kDe(W) : K0, estilo = `width:100%;height:${o.h || 86}mm;display:block`;
+  if (o.imp && o.pw){
+    const Wt = izq + (Math.max(...cel.map(c => c.x + c.w)) - Math.min(...cel.map(c => c.x))) * SX + 10, Kt = kDe(Wt), u = o.pw / Wt; // escala de la estantería completa en una hoja
+    if (o.fit){ const a0 = top + H * K + 34; if (W / a0 < o.pw / o.h){ W = (o.pw / o.h) * a0; SX = (W - izq - 10) / (x1 - x0); } }   // toda la página: las columnas se estiran al ancho de la hoja
+    else if (W < Wt){ K = Kt; estilo = `width:${(W * u).toFixed(1)}mm;height:${((top + H * K + 34) * u).toFixed(1)}mm;display:block`; }  // tal cual: mismo tamaño que en la hoja completa
+  }
+  const alto = top + H * K + 34;
   const Y = cm => top + (H - cm) * K, X = cm => izq + (cm - x0) * SX;
-  let s = `<svg viewBox="0 0 ${W} ${alto}" ${o.imp ? `style="width:100%;height:${o.h || 86}mm;display:block" preserveAspectRatio="xMidYMin meet"` : `width="${W}" height="${alto}"`} xmlns="http://www.w3.org/2000/svg" font-family="Arial,sans-serif">`;
+  let s = `<svg viewBox="0 0 ${W} ${alto}" ${o.imp ? `style="${estilo}" preserveAspectRatio="xMidYMin meet"` : `width="${W}" height="${alto}"`} xmlns="http://www.w3.org/2000/svg" font-family="Arial,sans-serif">`;
   let col = 0, xc = 0, labN = false;
   e.tramos.forEach(t => {
     const ini = col + 1, fin = col + t.cols, xi = xc; col = fin; xc += t.cols * t.ancho;
@@ -1812,15 +1819,19 @@ function estDlgImprimir(){
     <label style="flex-direction:row;align-items:center;gap:6px;color:inherit;font-size:14px"><input type="radio" name="eiA" value="all1" ${rg ? '' : 'checked'} onchange="$('#eiR').style.opacity=.4"> <b>Todo</b> <span class="muted">(estantería completa en una hoja)</span></label>
     <label style="flex-direction:row;align-items:center;gap:6px;color:inherit;font-size:14px"><input type="radio" name="eiA" value="rango" ${rg ? 'checked' : ''} onchange="$('#eiR').style.opacity=1"> <b>Por rango</b></label>
     <span id="eiR" style="display:inline-flex;align-items:center;gap:6px;opacity:${rg ? 1 : .4}">desde columna <input type="number" id="eiD" min="1" max="${tot}" value="${I.desde}" style="width:64px" onfocus="document.querySelector('input[name=eiA][value=rango]').checked=true;$('#eiR').style.opacity=1"> hasta <input type="number" id="eiH" min="1" max="${tot}" value="${I.hasta}" style="width:64px" onfocus="document.querySelector('input[name=eiA][value=rango]').checked=true;$('#eiR').style.opacity=1"></span>
+    </div><div class="row" style="align-items:center;flex-wrap:wrap;gap:14px;margin-top:8px">
+    <label style="flex:1;min-width:260px">Título de la impresión (opcional)<input id="eiTit" value="${esc(I.titulo || '')}" placeholder="ej: Estantería perfiles · Suc. Olmué"></label>
+    <label style="flex-direction:row;align-items:center;gap:6px;color:inherit;font-size:14px" title="Las columnas elegidas se estiran para ocupar todo el ancho de la hoja"><input type="checkbox" id="eiFit" ${I.fit ? 'checked' : ''}> <b>Toda la página</b></label>
     <button class="b" onclick="estImprimirYa()">🖨 Imprimir</button></div>
-    <p class="muted" style="margin:6px 0 0">Se imprime en A4 horizontal, con los colores de "Pintar por" que tengas en pantalla, el contenido escrito en cada casillero y la leyenda abajo.</p></div>`;
+    <p class="muted" style="margin:6px 0 0">Se imprime en A4 horizontal, con los colores de "Pintar por" que tengas en pantalla, el contenido escrito en cada casillero y la leyenda abajo. <b>Toda la página</b>: las columnas elegidas ocupan todo el ancho de la hoja; sin marcar, se imprimen del mismo tamaño que en la estantería completa.</p></div>`;
 }
 function estImprimirYa(){
   const tot = S.estanteria.tramos.reduce((a, t) => a + t.cols, 0), alc = (document.querySelector('input[name=eiA]:checked') || {}).value || 'all1';
   let d = Math.round(+$('#eiD').value || 1), h = Math.round(+$('#eiH').value || tot);
   d = Math.max(1, Math.min(d, tot)); h = Math.max(1, Math.min(h, tot)); if (d > h) [d, h] = [h, d];
-  EST_IMP = { alc, desde: d, hasta: h };
-  imprimirEstanteria({ modo: S.estanteria.modo || 'familia', color: true, txt: true, leyenda: true, listado: false, papel: 'A4', alc, desde: d, hasta: h });
+  const titulo = String($('#eiTit').value || '').trim(), fit = $('#eiFit').checked;
+  EST_IMP = { alc, desde: d, hasta: h, titulo, fit };
+  imprimirEstanteria({ modo: S.estanteria.modo || 'familia', color: true, txt: true, leyenda: true, listado: false, papel: 'A4', alc, desde: d, hasta: h, titulo, fit });
 }
 function estPartes(o){
   const e = estInit(); let c = 0; const gr = e.tramos.map(t => { const a = c + 1; c += t.cols; return { id: t.id, nombre: t.nombre, a, b: c }; });
@@ -1855,7 +1866,7 @@ function imprimirEstanteria(o){
     const cods = [...new Set(cel.filter(c => c.col >= a && c.col <= b).flatMap(c => e.celdas[c.id] || []))].filter(c => e.prods[c]);
     const nLey = o.modo === 'producto' ? Math.ceil(cods.length / 5) : Math.ceil(new Set(cods.map(c => o.modo === 'sub' ? subKey(e.prods[c].f, e.prods[c].s) : e.prods[c].f)).size / 3);
     const h = (o.leyenda ? Math.max(78, 172 - nLey * (o.modo === 'producto' ? 2.85 : 4.4)) : 178) * K * (A3 ? 1.04 : 1);
-    cuerpo += `<div class="hoja"><div style="display:flex;justify-content:space-between;align-items:baseline"><h1 style="font-size:15px;margin:0">Estantería ${tit} — hoja ${i + 1} de ${partes.length} · ${lab} (columnas ${a}–${b})</h1><span style="font-size:10px">${fecha} · casillero = columna + nivel (A arriba … F piso) + parte</span></div>
+    cuerpo += `<div class="hoja"><div style="display:flex;justify-content:space-between;align-items:baseline"><h1 style="font-size:${o.titulo ? 18 : 15}px;margin:0">${o.titulo ? esc(o.titulo) : `Estantería ${tit}`}${partes.length > 1 ? ` — hoja ${i + 1} de ${partes.length}` : ''} <span style="font-size:11px;font-weight:normal">· columnas ${a}–${b}</span></h1><span style="font-size:10px">${fecha} · casillero = columna + nivel (A arriba … F piso) + parte</span></div>
       ${estSVG(a, b, Object.assign({ imp: true, h, pw: A3 ? 406 : 283 }, o))}
       ${o.leyenda && cods.length ? `<div class="ley">${estLeyenda(e, o.modo, cods, !o.color)}</div>` : ''}</div>`;
   });
