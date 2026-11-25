@@ -849,7 +849,7 @@ const EST_TRAMOS_DEF = [
   // Medidas de "Plano v2 (3)", Excel v4 (siempre ALTO x ANCHO). ancho = ancho de columna; si el nivel se divide en n partes, cada una mide (ancho - (n-1) x sep) / n y entre ellas queda el separador (sep).
   { id: 'G1', nombre: 'Grupo 1', color: '#FFC7CE', cols: 3, ancho: 150, sep: 4, niveles: [49, 31, 40, 40, 40, 39] },
   { id: 'G2', nombre: 'Grupo 2', color: '#FFEB9C', cols: 5, ancho: 150, sep: 4, niveles: [49, 31, 40, 40, 40, 39] },
-  { id: 'G3', nombre: 'Grupo 3', color: '#C6EFCE', cols: 1, ancho: 148, sep: 4, niveles: [49, 49, 49, 49, 49, 49] },
+  { id: 'G3', nombre: 'Grupo 3', color: '#C6EFCE', cols: 1, ancho: 150, sep: 4, niveles: [49, 49, 49, 49, 49, 49] },
   { id: 'G4', nombre: 'Grupo 4', color: '#BDD7EE', cols: 5, ancho: 150, sep: 4, niveles: [49, 31, 40, 40, 40, 39] },
   { id: 'G5', nombre: 'Grupo 5', color: '#E4DFEC', cols: 9, ancho: 150, sep: 4, niveles: [49, 31, 40, 40, 40, 39] },
   { id: 'G6', nombre: 'Grupo 6', color: '#F8CBAD', cols: 7, ancho: 150, sep: 4, niveles: [49, 31, 40, 40, 40, 39] }
@@ -897,9 +897,9 @@ function estColores(e, forzar){ // colores automáticos: familia = tono, subfami
 }
 function estInit(){
   const e = S.estanteria = S.estanteria || {};
-  if (e.version !== 3 && e.version !== 4 && e.version !== 5 && e.version !== 6){ Object.keys(e).forEach(k => delete e[k]); e.version = 3; }
+  if (e.version !== 3 && e.version !== 4 && e.version !== 5 && e.version !== 6 && e.version !== 7){ Object.keys(e).forEach(k => delete e[k]); e.version = 3; }
   if (e.version === 3){ e.celdas = {}; delete e.tramos; e.version = 4; }
-  if (e.version === 4 || e.version === 5){ delete e.tramos; e.version = 6; } // medidas reales del Excel v4 (Plano v2 (3)); lo ubicado en cada casillero se conserva // distribución nueva: se parte sin materiales asignados
+  if (e.version === 4 || e.version === 5 || e.version === 6){ delete e.tramos; e.version = 7; } // medidas reales del Excel v4 (Plano v2 (3)); lo ubicado en cada casillero se conserva // distribución nueva: se parte sin materiales asignados
   if (!e.tramos) e.tramos = JSON.parse(JSON.stringify(EST_TRAMOS_DEF));
   e.cant = e.cant || {}; e.famCol = e.famCol || {}; e.subCol = e.subCol || {}; e.famAb = e.famAb || {}; e.subAb = e.subAb || {}; e.celdas = e.celdas || {};
   if (!e.prods){ e.prods = {}; EST_DEF.forEach(([c, f, s, lab], i) => { if (!e.prods[c]) e.prods[c] = { f, s, lab, n: i + 1 }; }); e.sigN = EST_DEF.length + 1; }
