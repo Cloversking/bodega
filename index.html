@@ -846,10 +846,10 @@ const EST_DEF = [["71001","Perfiles metalicos","Perfiles abiertos","L 20x20x2"],
 // Distribución definitiva (estanteria.xlsx, hoja 3): 30 columnas en 6 grupos. Casillero = columna + nivel (A arriba … F piso) + .parte si el nivel está dividido. Ej: 4B.1, 9A.3, 12F.
 // Alto de cada nivel y ancho de columna: medidas del Excel v4 (hoja "Plano v2 (3)"), editables en Colores y medidas.
 const EST_TRAMOS_DEF = [
-  // ancho = ancho de columna; si el nivel se divide en 2 partes, cada una mide (ancho - sep) / 2 y entre ambas queda el separador (sep). Medidas de "Plano v2 (3)", Excel v4.
+  // Medidas de "Plano v2 (3)", Excel v4 (siempre ALTO x ANCHO). ancho = ancho de columna; si el nivel se divide en n partes, cada una mide (ancho - (n-1) x sep) / n y entre ellas queda el separador (sep).
   { id: 'G1', nombre: 'Grupo 1', color: '#FFC7CE', cols: 3, ancho: 150, sep: 4, niveles: [49, 31, 40, 40, 40, 39] },
   { id: 'G2', nombre: 'Grupo 2', color: '#FFEB9C', cols: 5, ancho: 150, sep: 4, niveles: [49, 31, 40, 40, 40, 39] },
-  { id: 'G3', nombre: 'Grupo 3', color: '#C6EFCE', cols: 1, ancho: 196, sep: 0, niveles: [34, 34, 34, 34, 34, 34] },
+  { id: 'G3', nombre: 'Grupo 3', color: '#C6EFCE', cols: 1, ancho: 148, sep: 4, niveles: [49, 49, 49, 49, 49, 49] },
   { id: 'G4', nombre: 'Grupo 4', color: '#BDD7EE', cols: 5, ancho: 150, sep: 4, niveles: [49, 31, 40, 40, 40, 39] },
   { id: 'G5', nombre: 'Grupo 5', color: '#E4DFEC', cols: 9, ancho: 150, sep: 4, niveles: [49, 31, 40, 40, 40, 39] },
   { id: 'G6', nombre: 'Grupo 6', color: '#F8CBAD', cols: 7, ancho: 150, sep: 4, niveles: [49, 31, 40, 40, 40, 39] }
@@ -860,6 +860,14 @@ const EST_FILAS = (() => {
   const g6 = F(1, 2, 2, 2, 2, 1); g6.splice(2, 2, { l: 'C', ls: ['C', 'D'], sub: 2 });
   return { G1: F(1, 1, 1, 1, 1, 1), G2: F(1, 2, 2, 2, 2, 1), G3: F(4, 4, 4, 4, 4, 4), G4: F(1, 2, 2, 2, 2, 2), G5: F(1, 2, 2, 2, 2, 1), G6: g6 };
 })();
+const estHolg = () => (S.estanteria && S.estanteria.holg != null ? S.estanteria.holg : 2) / 10; // holgura entre perfiles, en cm (se guarda en mm)
+// Cuántas piezas caben en el frente del casillero (ancho x alto), probando el perfil parado y acostado, con holgura entre piezas. n = productos que comparten el casillero (cada uno ocupa 1/n del ancho, como en el dibujo).
+function estCabe(cod, c, n){
+  const p = PROD_MAP[cod]; if (!p) return null; const a = +p[4] * 100, b = +p[5] * 100; if (!(a > 0 && b > 0)) return null;
+  const W = c.w / Math.max(1, n || 1), H = c.h, h = estHolg(), f = (x, y) => Math.floor((W + 1e-9) / (x + h)) * Math.floor((H + 1e-9) / (y + h));
+  return Math.max(f(a, b), f(b, a));
+}
+const estCabeTxt = (cod, c, n, cant) => { const k = estCabe(cod, c, n); if (k == null) return '<span class="muted">sin medidas</span>'; return k < 1 ? '<span class="err">0 · no cabe</span>' : `<b>${fmt(k, 0)}</b> un.${cant != null && cant !== '' && +cant > k ? ` <span class="err" title="Anotaste ${cant}">⚠ más de lo que cabe</span>` : ''}`; };
 const estKey = id => String(id).replace(/^\d+/, m => m.padStart(2, '0'));
 const EST_HUES = [212, 150, 28, 352, 275, 48, 190, 110, 320, 0, 240, 80];
 let EST_ESC = 1.5, EST_SEL = [], EST_MODO = null, EST_BUS = '', EST_PF = { q: '', f: '', s: '', sin: false }, EST_AF = { q: '', f: '', s: '', sin: true, sig: true }, EST_ACT = null, EST_MOV = null, EST_NF = '', EST_NS = '';
@@ -889,9 +897,9 @@ function estColores(e, forzar){ // colores automáticos: familia = tono, subfami
 }
 function estInit(){
   const e = S.estanteria = S.estanteria || {};
-  if (e.version !== 3 && e.version !== 4 && e.version !== 5){ Object.keys(e).forEach(k => delete e[k]); e.version = 3; }
+  if (e.version !== 3 && e.version !== 4 && e.version !== 5 && e.version !== 6){ Object.keys(e).forEach(k => delete e[k]); e.version = 3; }
   if (e.version === 3){ e.celdas = {}; delete e.tramos; e.version = 4; }
-  if (e.version === 4){ delete e.tramos; e.version = 5; } // medidas reales del Excel v4 (Plano v2 (3)); lo ubicado en cada casillero se conserva // distribución nueva: se parte sin materiales asignados
+  if (e.version === 4 || e.version === 5){ delete e.tramos; e.version = 6; } // medidas reales del Excel v4 (Plano v2 (3)); lo ubicado en cada casillero se conserva // distribución nueva: se parte sin materiales asignados
   if (!e.tramos) e.tramos = JSON.parse(JSON.stringify(EST_TRAMOS_DEF));
   e.cant = e.cant || {}; e.famCol = e.famCol || {}; e.subCol = e.subCol || {}; e.famAb = e.famAb || {}; e.subAb = e.subAb || {}; e.celdas = e.celdas || {};
   if (!e.prods){ e.prods = {}; EST_DEF.forEach(([c, f, s, lab], i) => { if (!e.prods[c]) e.prods[c] = { f, s, lab, n: i + 1 }; }); e.sigN = EST_DEF.length + 1; }
@@ -908,7 +916,7 @@ function estCeldas(){
       col++; let y = 0, niv = 0;
       for (let k = filas.length - 1; k >= 0; k--){
         const f = filas[k], h = f.ls.reduce((a, l) => a + hl[l], 0); niv += f.ls.length;
-        for (let q = 0; q < f.sub; q++) cel.push({ id: col + f.l + (f.sub > 1 ? '.' + (q + 1) : ''), col, niv, letra: f.l, ls: f.ls, sub: q + 1, nsub: f.sub, t: t.id, x: x + q * (f.sub === 2 ? (t.ancho - (t.sep || 0)) / 2 + (t.sep || 0) : t.ancho / f.sub), w: f.sub === 2 ? (t.ancho - (t.sep || 0)) / 2 : t.ancho / f.sub, y, h });
+        for (let q = 0; q < f.sub; q++) cel.push({ id: col + f.l + (f.sub > 1 ? '.' + (q + 1) : ''), col, niv, letra: f.l, ls: f.ls, sub: q + 1, nsub: f.sub, t: t.id, x: x + q * ((t.ancho - (f.sub - 1) * (t.sep || 0)) / f.sub + (t.sep || 0)), w: (t.ancho - (f.sub - 1) * (t.sep || 0)) / f.sub, y, h });
         y += h;
       }
       x += t.ancho;
@@ -959,7 +967,7 @@ function estSVG(desde, hasta, o){
     // agrupa productos consecutivos con la misma clave (familia/subfamilia) en una sola franja
     const fr = []; l.forEach(cod => { const g = estGrupo(cod, modo); const u = fr[fr.length - 1]; if (u && u.k === g[0]) { u.n++; u.cods.push(cod); } else fr.push({ k: g[0], col: g[1], t: g[2], n: 1, cods: [cod] }); });
     const tot = l.length; let px = cx;
-    fr.forEach(f => {
+    fr.forEach((f, fi) => {
       const w = cw * f.n / tot, ap = q && !f.cods.some(cod => norm(cod + ' ' + estDesc(cod)).includes(q));
       s += `<rect x="${px + 0.5}" y="${cy + 0.5}" width="${Math.max(w - 1, 1)}" height="${ch - 1}" fill="${bn ? '#fff' : f.col}" opacity="${ap ? 0.15 : 1}" stroke="#333" stroke-width="${bn ? 0.8 : 0.4}"/>`;
       const tc = bn ? '#000' : (oscuro(f.col) ? '#fff' : '#000');
@@ -974,14 +982,15 @@ function estSVG(desde, hasta, o){
         const maxc = Math.max(3, Math.floor((ch - 14) / 5.8)), tt = txt.length > maxc ? txt.slice(0, maxc - 1) + '…' : txt, fx = px + w / 2 + 3.5, fy = cy + ch - 4;
         s += `<text x="${fx}" y="${fy}" font-size="${w < 16 ? 8 : 9.5}" font-weight="bold" fill="${tc}" transform="rotate(-90 ${fx} ${fy})" pointer-events="none">${esc(tt)}</text>`;
       }
+      if (o.txt !== false && w >= 34 && ch >= 24 && (fi < fr.length - 1 || w >= 62)){ const ks = f.cods.map(cod => estCabe(cod, c, tot)).filter(k => k != null); if (ks.length){ const k0 = Math.min(...ks), k1 = Math.max(...ks); s += `<text x="${px + 3}" y="${cy + 10}" font-size="8" font-weight="bold" fill="${tc}" pointer-events="none">${k0 === k1 ? '≈' + k0 : k0 + '–' + k1}</text>`; } }
       px += w;
     });
     s += `<text x="${cx + cw - 2}" y="${cy + 9}" font-size="7.5" text-anchor="end" fill="${l.length && !bn ? '#000' : '#777'}" pointer-events="none" ${l.length && !bn ? 'paint-order="stroke" stroke="#fff" stroke-width="2"' : ''}>${c.id}</text>`;
-    if (!o.imp) s += `<rect x="${cx}" y="${cy}" width="${cw}" height="${ch}" fill="transparent" stroke="${sel ? '#e00' : 'none'}" stroke-width="3.5" onclick="estClic(event,'${c.id}')" style="cursor:pointer"><title>${c.id} · ${c.w}×${c.h} cm${l.length ? '\n' + l.map(cod => `#${(e.prods[cod] || {}).n || '?'} ${cod} ${estDesc(cod)}${(e.cant[c.id] || {})[cod] != null ? ' · cant. ' + e.cant[c.id][cod] : ''}`).join('\n') : ' · vacío'}</title></rect>`;
+    if (!o.imp) s += `<rect x="${cx}" y="${cy}" width="${cw}" height="${ch}" fill="transparent" stroke="${sel ? '#e00' : 'none'}" stroke-width="3.5" onclick="estClic(event,'${c.id}')" style="cursor:pointer"><title>${c.id} · ${c.h}×${c.w} cm (alto × ancho)${l.length ? '\n' + l.map(cod => { const k = estCabe(cod, c, l.length); return `#${(e.prods[cod] || {}).n || '?'} ${cod} ${estDesc(cod)}${k != null ? ' · caben ' + k : ''}${(e.cant[c.id] || {})[cod] != null ? ' · cant. ' + e.cant[c.id][cod] : ''}`; }).join('\n') : ' · vacío'}</title></rect>`;
   });
   s += `<line x1="${izq - 4}" y1="${Y(0)}" x2="${W - 4}" y2="${Y(0)}" stroke="#000" stroke-width="2"/>`;
   [...new Set(cs.map(c => c.col))].forEach(cn => { const c = cs.find(z => z.col === cn); s += `<text x="${X(c.x + c.w / 2)}" y="${Y(0) + 14}" font-size="11" text-anchor="middle" font-weight="bold">${cn}</text>`; });
-  s += `<text x="${izq}" y="${Y(0) + 29}" font-size="10" fill="#444">Vista de frente · casillero = columna + nivel (A arriba … F piso) + parte · alturas en cm · ${modo === 'producto' ? '#n = número del producto (ver listado)' : modo === 'sub' ? 'coloreado por subfamilia' : 'coloreado por familia'}</text></svg>`;
+  s += `<text x="${izq}" y="${Y(0) + 29}" font-size="10" fill="#444">Vista de frente · casillero = columna + nivel (A arriba … F piso) + parte · medidas alto × ancho en cm · ≈N = cuántos caben con holgura · ${modo === 'producto' ? '#n = número del producto (ver listado)' : modo === 'sub' ? 'coloreado por subfamilia' : 'coloreado por familia'}</text></svg>`;
   return s;
 }
 function estClic(ev, id){
@@ -1305,6 +1314,7 @@ function estDesmarcar(c){
 }
 function estColorEdit(tipo, k, v){ const e = S.estanteria; if (tipo === 'f') e.famCol[k] = v; else if (tipo === 's') e.subCol[k] = v; else if (tipo === 'fa') e.famAb[k] = v.trim() || abrev(k); else if (tipo === 'sa') e.subAb[k] = v.trim(); guardar(); vEstanteria(); }
 function estRecolorear(){ if (!confirm('¿Volver a generar todos los colores automáticamente?')) return; estColores(S.estanteria, true); guardar(); vEstanteria(); }
+function estHolgEdit(v){ S.estanteria.holg = Math.max(0, n(v, 2)); guardar(); vEstanteria(); }
 function estTramoEdit(i, k, v){
   const t = S.estanteria.tramos[i];
   if (k === 'niveles'){ const a = String(v).split(/[^0-9.]+/).map(Number).filter(x => x > 0); if (!a.length) return toast('Escribe las alturas en cm, de piso hacia arriba, ej: 50,40,40,40,40,40'); if (a.length !== 6) return toast('Son 6 niveles: F, E, D, C, B, A (de piso hacia arriba)'); t.niveles = a; }
@@ -1510,6 +1520,8 @@ function estConfHTML(){
     <div><h4 style="margin:0 0 4px">Subfamilias</h4><table><thead><tr><th>Color</th><th>Familia › Subfamilia</th><th>Abrev.</th></tr></thead><tbody>
       ${[...new Set(Object.values(e.prods).map(p => subKey(p.f, p.s)))].sort().map(k => `<tr><td><input type="color" value="${e.subCol[k]}" style="width:36px;padding:0" onchange="estColorEdit('s','${esc(k)}',this.value)"></td><td>${esc(k.replace('|', ' › '))}</td><td><input value="${esc(e.subAb[k])}" style="width:80px" onchange="estColorEdit('sa','${esc(k)}',this.value)"></td></tr>`).join('')}</tbody></table></div></div>
     <button class="b2" style="margin-top:8px" onclick="estRecolorear()">🎨 Regenerar colores automáticos</button>
+    <h4 style="margin:12px 0 4px">Holgura entre perfiles</h4>
+    <label class="muted" style="flex-direction:row;align-items:center;gap:6px">Holgura para calcular cuántos caben (mm): <input type="number" min="0" step="0.5" value="${fmt(estHolg() * 10, 1)}" style="width:70px" onchange="estHolgEdit(this.value)"></label>
     <h4 style="margin:12px 0 4px">Medidas por grupo (de izquierda a derecha)</h4>
     <table><thead><tr><th>Grupo</th><th>Columnas</th><th>Ancho columna (cm)</th><th>Alto de cada nivel en cm, de piso hacia arriba (F, E, D, C, B, A)</th></tr></thead><tbody>
     ${e.tramos.map((t, i) => `<tr><td><span style="display:inline-block;width:12px;height:12px;background:${t.color};border:1px solid #555"></span> <input value="${esc(t.nombre)}" onchange="estTramoEdit(${i},'nombre',this.value)"></td><td>${t.cols}</td>
@@ -1547,12 +1559,13 @@ function vEstanteriaHTML(){
     const c1 = EST_SEL.length === 1 ? cel.find(z => z.id === EST_SEL[0]) : null, selCods = [...new Set(EST_SEL.flatMap(id => e.celdas[id] || []))];
     if (c1){
       const l = e.celdas[c1.id] || [];
-      pDet = `<div class="row" style="align-items:center;flex-wrap:wrap"><b style="font-size:16px;flex:1">📦 Casillero ${c1.id}</b><span class="muted">columna ${c1.col} · nivel ${c1.ls.join('+')}${c1.ls.includes('F') ? ' (piso)' : ''}${c1.nsub > 1 ? ` · parte ${c1.sub} de ${c1.nsub}` : ''} · ${Math.round(c1.w)}×${c1.h} cm</span></div>
+      pDet = `<div class="row" style="align-items:center;flex-wrap:wrap"><b style="font-size:16px;flex:1">📦 Casillero ${c1.id}</b><span class="muted">columna ${c1.col} · nivel ${c1.ls.join('+')}${c1.ls.includes('F') ? ' (piso)' : ''}${c1.nsub > 1 ? ` · parte ${c1.sub} de ${c1.nsub}` : ''} · ${c1.h}×${Math.round(c1.w * 10) / 10} cm (alto × ancho)</span></div>
         <div class="row" style="margin:6px 0;flex-wrap:wrap"><button class="b" onclick="estUbAbrir(null,'${c1.id}')">＋ Agregar producto aquí</button><button class="b2" onclick="pmAbrir('${c1.id}')" title="Poner una descripción que no está en la base">✍ Descripción libre aquí</button>${l.length ? `<button class="b2" onclick="estVaciar()">Vaciar</button>` : ''}<button class="b2" onclick="EST_SEL=[];vEstanteria()">Quitar selección</button></div>
-        ${l.length ? `<table><thead><tr><th>Orden</th><th></th><th>Producto</th><th>Cantidad</th><th>También en</th><th></th></tr></thead><tbody>${l.map((c, i) => { const p = e.prods[c] || { f: '?', s: '?', n: '?', col: '#ddd' };
+        ${l.length ? `<table><thead><tr><th>Orden</th><th></th><th>Producto</th><th>Cantidad</th><th>Caben (holgura ${fmt(estHolg() * 10, 0)} mm)</th><th>También en</th><th></th></tr></thead><tbody>${l.map((c, i) => { const p = e.prods[c] || { f: '?', s: '?', n: '?', col: '#ddd' };
           return `<tr ${EST_MOV && EST_MOV.c === c ? 'style="background:#fff3c4"' : ''}><td style="white-space:nowrap"><button class="b2" title="Más a la izquierda" onclick="estMoverEnCelda('${c1.id}',${i},-1)">◀</button><button class="b2" title="Más a la derecha" onclick="estMoverEnCelda('${c1.id}',${i},1)">▶</button></td>
             <td style="white-space:nowrap"><input type="color" value="${colDe(p) || '#dddddd'}" title="Cambiar el color de este producto" style="width:34px;height:26px;padding:0;border:1px solid #999;cursor:pointer" onchange="estColProd('${esc(c)}',this.value)">${p.colFijo ? `<button class="b2" style="padding:2px 6px" title="Volver al color automático" onclick="estColProd('${esc(c)}','')">↺</button>` : ''}</td><td><b>${esc(c)}</b> ${esc(estDesc(c))}<br>${famBadge(c)} ${famBtn(c)}</td>
             <td><input type="number" min="0" step="any" placeholder="—" value="${(e.cant[c1.id] || {})[c] != null ? e.cant[c1.id][c] : ''}" style="width:90px" onchange="estCant('${c1.id}','${esc(c)}',this.value)"></td>
+            <td>${estCabeTxt(c, c1, l.length, (e.cant[c1.id] || {})[c])}${l.length > 1 ? `<div class="muted" style="font-size:11px">con ${l.length} productos, cada uno usa 1/${l.length} del ancho</div>` : ''}</td>
             <td>${(donde[c] || []).filter(x => x !== c1.id).map(x => `📍${x}${estQtxt((e.cant[x] || {})[c])}`).join(', ') || '—'}</td>
             <td style="white-space:nowrap"><button class="b2" onclick="estMover('${esc(c)}','${c1.id}')">↔ Mover</button> <button class="b2" onclick="estDesasignar('${c1.id}','${esc(c)}')">✕ Sacar</button></td></tr>`; }).join('')}</tbody></table>`
           : `<p style="margin:6px 0"><b>Vacío.</b> <span class="muted">No tiene ningún producto.</span></p>`}`;
