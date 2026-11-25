@@ -222,8 +222,10 @@ function exportar(){
 /* ===================== INTERNET OBLIGATORIO ===================== */
 async function hayInternet(){
   if (!navigator.onLine) return false;
-  try { await fetch('https://www.gstatic.com/generate_204?_=' + Date.now(), { mode: 'no-cors', cache: 'no-store' }); return true; }
-  catch(e){ return false; }
+  const ac = typeof AbortController !== 'undefined' ? new AbortController() : null, t = ac ? setTimeout(() => ac.abort(), 6000) : 0;
+  try { await fetch('https://www.gstatic.com/generate_204?_=' + Date.now(), { mode: 'no-cors', cache: 'no-store', signal: ac ? ac.signal : undefined }); return true; }
+  catch(e){ return !!(ac && ac.signal.aborted); }
+  finally { clearTimeout(t); }
 }
 async function chequearRed(){ const ok = await hayInternet(); $('#block').style.display = ok ? 'none' : 'flex'; return ok; }
 setInterval(chequearRed, 20000);
@@ -346,7 +348,8 @@ function render(){
   if (!TABS.some(x => x[0] === TAB) && !(TAB === 'remu' && USER.rol === 'admin')) TAB = 'ruta';
   if (TAB !== 'remu') remuBloquear();
   $('#nav').innerHTML = TABS.filter(x => x[0] !== 'admin' || USER.rol === 'admin').map(([k, l]) => `<button class="${k === TAB ? 'on' : ''}" onclick="TAB='${k}';render()">${l}</button>`).join('');
-  ({ ruta: vRuta, productos: vProductos, guardados: vGuardados, flota: vFlota, sectores: vSectores, mapa: vMapa, personal: vPersonal, turnos: vTurnos, estanteria: vEstanteria, etiquetado: vEtiquetado, admin: vAdmin, remu: vRemu })[TAB]();
+  try { ({ ruta: vRuta, productos: vProductos, guardados: vGuardados, flota: vFlota, sectores: vSectores, mapa: vMapa, personal: vPersonal, turnos: vTurnos, estanteria: vEstanteria, etiquetado: vEtiquetado, admin: vAdmin, remu: vRemu })[TAB](); }
+  catch(err){ console.error(err); mostrarFallo(err, true); }
 }
 
 /* ===================== VEHÍCULOS: ¿CABE? ===================== */
@@ -2928,8 +2931,22 @@ async function importarMaestro(f){
 }
 
 /* ===================== INICIO ===================== */
-(async function init(){
-  S = cargarLocal(); if (S) normalizar(S);
+function mostrarFallo(err, enVista){
+  try {
+    const m = $('#main'); if (!m) return;
+    const txt = String((err && (err.stack || err.message)) || err).split('\n').slice(0, 3).join('\n');
+    m.innerHTML = `<div class="card" style="border:2px solid #c00"><h2 style="color:#c00;margin-top:0">⚠ La app tuvo un error${enVista ? ' en esta pestaña' : ' al iniciar'}</h2>
+      <p>Tus datos no se borraron. Copia este texto y envíaselo a Claude:</p>
+      <pre style="white-space:pre-wrap;background:#f6f6f6;padding:8px;border-radius:6px;font-size:12px">${esc(txt)}</pre>
+      <p>${enVista ? `<button class="b" onclick="TAB='ruta';render()">🚚 Ir a Armar reparto</button> ` : '<button class="b" onclick="location.reload()">🔄 Reintentar</button> '}
+      <button class="b2" onclick="try{const t=localStorage.getItem(STORE_KEY)||JSON.stringify(S||{});const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'application/json'}));a.download='copia_datos_bodega_'+new Date().toISOString().slice(0,10)+'.json';a.click();}catch(e){alert(e)}">💾 Descargar copia de mis datos</button>
+      <button class="b2" onclick="abrirArchivo()">📂 Abrir datos del pendrive</button></p></div>`;
+  } catch(e2){ document.body.insertAdjacentHTML('beforeend', '<pre style="color:#c00;padding:20px">Error: ' + String(err) + '</pre>'); }
+}
+window.addEventListener('error', ev => { const m = document.getElementById('main'); if (m && !m.innerHTML.trim()) mostrarFallo(ev.error || ev.message); });
+window.addEventListener('unhandledrejection', ev => { const m = document.getElementById('main'); if (m && !m.innerHTML.trim()) mostrarFallo(ev.reason); });
+(async function init(){ try {
+  S = cargarLocal(); if (S){ try { normalizar(S); } catch(err){ console.error('Copia local dañada', err); S = null; } }
   const id = sessionStorage.getItem('desp_user');
   await chequearRed();
   if (fsOK){
@@ -2943,7 +2960,7 @@ async function importarMaestro(f){
   }
   if (S && id) USER = S.users.find(u => u.id === id && u.activo) || null;
   render();
-})();
+} catch(err){ console.error(err); mostrarFallo(err, false); } })();
 </script>
 <script>
 /* PWA: registro del service worker (solo en https o localhost) */
