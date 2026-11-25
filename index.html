@@ -176,7 +176,7 @@ const fechaTxt = iso => iso ? new Date(iso).toLocaleString('es-CL') : 'sin fecha
 /* Conecta un archivo de datos: lo lee, compara con la copia del computador y queda guardando ahí */
 async function conectar(handle){
   let data;
-  try { const f = await handle.getFile(); data = normalizar(JSON.parse(await f.text())); }
+  try { const f = await conTiempo(handle.getFile(), 8000, null); if (!f) throw new Error('tiempo agotado'); data = normalizar(JSON.parse(await conTiempo(f.text(), 8000, '{'))); }
   catch(e){ pendingHandle = null; toast('No encontré el archivo (¿pendrive desconectado o en otra letra?). Ábrelo manualmente.', 4500); render(); return false; }
   const local = cargarLocal();
   if (local && local.users && local.users.length && local.modificado && data.modificado && local.modificado > data.modificado && local.creado === data.creado){
@@ -2945,14 +2945,16 @@ function mostrarFallo(err, enVista){
 }
 window.addEventListener('error', ev => { const m = document.getElementById('main'); if (m && !m.innerHTML.trim()) mostrarFallo(ev.error || ev.message); });
 window.addEventListener('unhandledrejection', ev => { const m = document.getElementById('main'); if (m && !m.innerHTML.trim()) mostrarFallo(ev.reason); });
+const conTiempo = (p, ms, v) => Promise.race([p, new Promise(r => setTimeout(() => r(v), ms))]);
 (async function init(){ try {
+  setTimeout(() => { try { const m = document.getElementById('main'); if (m && !m.innerHTML.trim()){ USER = null; render(); } } catch(err){ mostrarFallo(err, false); } }, 9000); // seguro: si el arranque se queda esperando, muestra la pantalla de inicio
   S = cargarLocal(); if (S){ try { normalizar(S); } catch(err){ console.error('Copia local dañada', err); S = null; } }
   const id = sessionStorage.getItem('desp_user');
   await chequearRed();
   if (fsOK){
-    const h = await idbGet('file');
+    const h = await conTiempo(idbGet('file'), 3000, null);
     if (h){
-      let p = 'prompt'; try { p = await h.queryPermission({ mode: 'readwrite' }); } catch(e){}
+      let p = 'prompt'; try { p = await conTiempo(h.queryPermission({ mode: 'readwrite' }), 3000, 'prompt'); } catch(e){}
       if (p === 'granted'){ if (S && id) USER = S.users.find(u => u.id === id && u.activo) || null; await conectar(h); return; }
       pendingHandle = h;
     }
