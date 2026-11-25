@@ -849,7 +849,7 @@ const EST_TRAMOS_DEF = [
   // Medidas de "Plano v2 (3)", Excel v4 (siempre ALTO x ANCHO). ancho = ancho de columna; si el nivel se divide en n partes, cada una mide (ancho - (n-1) x sep) / n y entre ellas queda el separador (sep).
   { id: 'G1', nombre: 'Grupo 1', color: '#FFC7CE', cols: 3, ancho: 150, sep: 4, niveles: [49, 31, 40, 40, 40, 39] },
   { id: 'G2', nombre: 'Grupo 2', color: '#FFEB9C', cols: 5, ancho: 150, sep: 4, niveles: [49, 31, 40, 40, 40, 39] },
-  { id: 'G3', nombre: 'Grupo 3', color: '#C6EFCE', cols: 1, ancho: 150, sep: 4, niveles: [49, 49, 49, 49, 49, 49] },
+  { id: 'G3', nombre: 'Grupo 3', color: '#C6EFCE', cols: 1, ancho: 150, sep: 4, niveles: [49, 31, 40, 40, 40, 39] },
   { id: 'G4', nombre: 'Grupo 4', color: '#BDD7EE', cols: 5, ancho: 150, sep: 4, niveles: [49, 31, 40, 40, 40, 39] },
   { id: 'G5', nombre: 'Grupo 5', color: '#E4DFEC', cols: 9, ancho: 150, sep: 4, niveles: [49, 31, 40, 40, 40, 39] },
   { id: 'G6', nombre: 'Grupo 6', color: '#F8CBAD', cols: 7, ancho: 150, sep: 4, niveles: [49, 31, 40, 40, 40, 39] }
@@ -864,7 +864,7 @@ const estHolg = () => (S.estanteria && S.estanteria.holg != null ? S.estanteria.
 // Cuántas piezas caben en el frente del casillero (ancho x alto), probando el perfil parado y acostado, con holgura entre piezas. n = productos que comparten el casillero (cada uno ocupa 1/n del ancho, como en el dibujo).
 function estCabe(cod, c, n){
   const p = PROD_MAP[cod]; if (!p) return null; const a = +p[4] * 100, b = +p[5] * 100; if (!(a > 0 && b > 0)) return null;
-  const W = c.w / Math.max(1, n || 1), H = c.h, h = estHolg(), f = (x, y) => Math.floor((W + 1e-9) / (x + h)) * Math.floor((H + 1e-9) / (y + h));
+  const W = c.wr / Math.max(1, n || 1), H = c.h, h = estHolg(), f = (x, y) => Math.floor((W + 1e-9) / (x + h)) * Math.floor((H + 1e-9) / (y + h));
   return Math.max(f(a, b), f(b, a));
 }
 const estCabeTxt = (cod, c, n, cant) => { const k = estCabe(cod, c, n); if (k == null) return '<span class="muted">sin medidas</span>'; return k < 1 ? '<span class="err">0 · no cabe</span>' : `<b>${fmt(k, 0)}</b> un.${cant != null && cant !== '' && +cant > k ? ` <span class="err" title="Anotaste ${cant}">⚠ más de lo que cabe</span>` : ''}`; };
@@ -897,9 +897,9 @@ function estColores(e, forzar){ // colores automáticos: familia = tono, subfami
 }
 function estInit(){
   const e = S.estanteria = S.estanteria || {};
-  if (e.version !== 3 && e.version !== 4 && e.version !== 5 && e.version !== 6 && e.version !== 7){ Object.keys(e).forEach(k => delete e[k]); e.version = 3; }
+  if (e.version !== 3 && e.version !== 4 && e.version !== 5 && e.version !== 6 && e.version !== 7 && e.version !== 8){ Object.keys(e).forEach(k => delete e[k]); e.version = 3; }
   if (e.version === 3){ e.celdas = {}; delete e.tramos; e.version = 4; }
-  if (e.version === 4 || e.version === 5 || e.version === 6){ delete e.tramos; e.version = 7; } // medidas reales del Excel v4 (Plano v2 (3)); lo ubicado en cada casillero se conserva // distribución nueva: se parte sin materiales asignados
+  if (e.version === 4 || e.version === 5 || e.version === 6 || e.version === 7){ delete e.tramos; e.version = 8; } // medidas reales del Excel v4 (Plano v2 (3)); lo ubicado en cada casillero se conserva // distribución nueva: se parte sin materiales asignados
   if (!e.tramos) e.tramos = JSON.parse(JSON.stringify(EST_TRAMOS_DEF));
   e.cant = e.cant || {}; e.famCol = e.famCol || {}; e.subCol = e.subCol || {}; e.famAb = e.famAb || {}; e.subAb = e.subAb || {}; e.celdas = e.celdas || {};
   if (!e.prods){ e.prods = {}; EST_DEF.forEach(([c, f, s, lab], i) => { if (!e.prods[c]) e.prods[c] = { f, s, lab, n: i + 1 }; }); e.sigN = EST_DEF.length + 1; }
@@ -916,7 +916,7 @@ function estCeldas(){
       col++; let y = 0, niv = 0;
       for (let k = filas.length - 1; k >= 0; k--){
         const f = filas[k], h = f.ls.reduce((a, l) => a + hl[l], 0); niv += f.ls.length;
-        for (let q = 0; q < f.sub; q++) cel.push({ id: col + f.l + (f.sub > 1 ? '.' + (q + 1) : ''), col, niv, letra: f.l, ls: f.ls, sub: q + 1, nsub: f.sub, t: t.id, x: x + q * ((t.ancho - (f.sub - 1) * (t.sep || 0)) / f.sub + (t.sep || 0)), w: (t.ancho - (f.sub - 1) * (t.sep || 0)) / f.sub, y, h });
+        for (let q = 0; q < f.sub; q++) cel.push({ id: col + f.l + (f.sub > 1 ? '.' + (q + 1) : ''), col, niv, letra: f.l, ls: f.ls, sub: q + 1, nsub: f.sub, t: t.id, x: x + q * t.ancho / f.sub, w: t.ancho / f.sub, wr: (t.ancho - (f.sub - 1) * (t.sep || 0)) / f.sub, y, h }); // x,w = dibujo (sin separadores); wr = medida real del casillero
         y += h;
       }
       x += t.ancho;
@@ -986,7 +986,7 @@ function estSVG(desde, hasta, o){
       px += w;
     });
     s += `<text x="${cx + cw - 2}" y="${cy + 9}" font-size="7.5" text-anchor="end" fill="${l.length && !bn ? '#000' : '#777'}" pointer-events="none" ${l.length && !bn ? 'paint-order="stroke" stroke="#fff" stroke-width="2"' : ''}>${c.id}</text>`;
-    if (!o.imp) s += `<rect x="${cx}" y="${cy}" width="${cw}" height="${ch}" fill="transparent" stroke="${sel ? '#e00' : 'none'}" stroke-width="3.5" onclick="estClic(event,'${c.id}')" style="cursor:pointer"><title>${c.id} · ${c.h}×${c.w} cm (alto × ancho)${l.length ? '\n' + l.map(cod => { const k = estCabe(cod, c, l.length); return `#${(e.prods[cod] || {}).n || '?'} ${cod} ${estDesc(cod)}${k != null ? ' · caben ' + k : ''}${(e.cant[c.id] || {})[cod] != null ? ' · cant. ' + e.cant[c.id][cod] : ''}`; }).join('\n') : ' · vacío'}</title></rect>`;
+    if (!o.imp) s += `<rect x="${cx}" y="${cy}" width="${cw}" height="${ch}" fill="transparent" stroke="${sel ? '#e00' : 'none'}" stroke-width="3.5" onclick="estClic(event,'${c.id}')" style="cursor:pointer"><title>${c.id} · ${c.h}×${Math.round(c.wr * 10) / 10} cm (alto × ancho)${l.length ? '\n' + l.map(cod => { const k = estCabe(cod, c, l.length); return `#${(e.prods[cod] || {}).n || '?'} ${cod} ${estDesc(cod)}${k != null ? ' · caben ' + k : ''}${(e.cant[c.id] || {})[cod] != null ? ' · cant. ' + e.cant[c.id][cod] : ''}`; }).join('\n') : ' · vacío'}</title></rect>`;
   });
   s += `<line x1="${izq - 4}" y1="${Y(0)}" x2="${W - 4}" y2="${Y(0)}" stroke="#000" stroke-width="2"/>`;
   [...new Set(cs.map(c => c.col))].forEach(cn => { const c = cs.find(z => z.col === cn); s += `<text x="${X(c.x + c.w / 2)}" y="${Y(0) + 14}" font-size="11" text-anchor="middle" font-weight="bold">${cn}</text>`; });
@@ -1559,7 +1559,7 @@ function vEstanteriaHTML(){
     const c1 = EST_SEL.length === 1 ? cel.find(z => z.id === EST_SEL[0]) : null, selCods = [...new Set(EST_SEL.flatMap(id => e.celdas[id] || []))];
     if (c1){
       const l = e.celdas[c1.id] || [];
-      pDet = `<div class="row" style="align-items:center;flex-wrap:wrap"><b style="font-size:16px;flex:1">📦 Casillero ${c1.id}</b><span class="muted">columna ${c1.col} · nivel ${c1.ls.join('+')}${c1.ls.includes('F') ? ' (piso)' : ''}${c1.nsub > 1 ? ` · parte ${c1.sub} de ${c1.nsub}` : ''} · ${c1.h}×${Math.round(c1.w * 10) / 10} cm (alto × ancho)</span></div>
+      pDet = `<div class="row" style="align-items:center;flex-wrap:wrap"><b style="font-size:16px;flex:1">📦 Casillero ${c1.id}</b><span class="muted">columna ${c1.col} · nivel ${c1.ls.join('+')}${c1.ls.includes('F') ? ' (piso)' : ''}${c1.nsub > 1 ? ` · parte ${c1.sub} de ${c1.nsub}` : ''} · ${c1.h}×${Math.round(c1.wr * 10) / 10} cm (alto × ancho)</span></div>
         <div class="row" style="margin:6px 0;flex-wrap:wrap"><button class="b" onclick="estUbAbrir(null,'${c1.id}')">＋ Agregar producto aquí</button><button class="b2" onclick="pmAbrir('${c1.id}')" title="Poner una descripción que no está en la base">✍ Descripción libre aquí</button>${l.length ? `<button class="b2" onclick="estVaciar()">Vaciar</button>` : ''}<button class="b2" onclick="EST_SEL=[];vEstanteria()">Quitar selección</button></div>
         ${l.length ? `<table><thead><tr><th>Orden</th><th></th><th>Producto</th><th>Cantidad</th><th>Caben (holgura ${fmt(estHolg() * 10, 0)} mm)</th><th>También en</th><th></th></tr></thead><tbody>${l.map((c, i) => { const p = e.prods[c] || { f: '?', s: '?', n: '?', col: '#ddd' };
           return `<tr ${EST_MOV && EST_MOV.c === c ? 'style="background:#fff3c4"' : ''}><td style="white-space:nowrap"><button class="b2" title="Más a la izquierda" onclick="estMoverEnCelda('${c1.id}',${i},-1)">◀</button><button class="b2" title="Más a la derecha" onclick="estMoverEnCelda('${c1.id}',${i},1)">▶</button></td>
