@@ -2389,7 +2389,7 @@ function guardarTurnoDia(pid, d){
 let CALC = [];
 /* ===================== PESO TEÓRICO DE PERFILES METÁLICOS (acero 7.850 kg/m³, medidas en mm) ===================== */
 const PT_TIPOS = {
-  cuad: { n: 'Cuadrado (tubo)', c: [['L', 'Lado'], ['e', 'Espesor']], f: v => (v.L * v.L - (v.L - 2 * v.e) ** 2) * 0.00785 },
+  cuad: { n: 'Cuadrado (tubo)', c: [['A', 'Lado'], ['B', 'Lado'], ['e', 'Espesor']], f: v => (v.A * v.B - (v.A - 2 * v.e) * (v.B - 2 * v.e)) * 0.00785 },
   rect: { n: 'Rectangular (tubo)', c: [['A', 'Lado mayor'], ['B', 'Lado menor'], ['e', 'Espesor']], f: v => (v.A * v.B - (v.A - 2 * v.e) * (v.B - 2 * v.e)) * 0.00785 },
   red: { n: 'Redondo (tubo / cañería)', c: [['D', 'Diámetro ext.'], ['e', 'Espesor']], f: v => (v.D - v.e) * v.e * 0.02466 },
   barra: { n: 'Barra redonda maciza', c: [['D', 'Diámetro']], f: v => v.D * v.D * 0.006165 },
@@ -2430,9 +2430,8 @@ function ptDetectar(desc){
     const m = d.match(/(\d+(?:\.\d+)?)\s*X\s*(\d+(?:\.\d+)?)\s*MTS?\s*X\s*(\d+(?:\.\d+)?)\s*MM/); v.A = m[1] * 1000; v.B = m[2] * 1000; v.e = +m[3];
   } else {
     const gs = (d.match(/\d+(?:\.\d+)?(?:\s*X\s*\d+(?:\.\d+)?)+/g) || []).map(g => g.split(/\s*X\s*/).map(Number));
-    let n = gs.filter(g => g.length === k.length || (t === 'cuad' && g.length === 3 && g[0] === g[1])).pop();
+    let n = gs.filter(g => g.length === k.length).pop();
     if (!n) return null;
-    if (t === 'cuad'){ if (n.length === 3) n = [n[0], n[2]]; }
     if (t === 'rect' && n[1] > n[0]) n = [n[1], n[0], n[2]];
     k.forEach((c, i) => v[c] = n[i]);
   }
@@ -2451,29 +2450,43 @@ function ptRevision(){
   PRODUCTOS.forEach(p => { const r = ptDetectar(p[1]); if (!r) return; const x = producto(p[0]) || {}, teo = ptPeso(r), bd = +x.peso || 0; out.push({ c: p[0], d: x.desc || p[1], r, teo, bd, conf: x.conf || p[7], lbd: +x.largo || 0, dif: teo > 0 ? (bd - teo) / teo * 100 : 0 }); });
   return out;
 }
-let PT = { abierto: false, t: 'cuad', v: {}, L: 6, umbral: 3, sel: {}, rev: false };
-function ptAbrir(){ PT.abierto = !PT.abierto; ptPintar(); }
+let PT = { t: 'cuad', v: {}, L: 6, umbral: 3, sel: {}, rev: false };
+function ptAbrir(){
+  let m = $('#ptModal'); if (m) m.remove();
+  m = document.createElement('div'); m.id = 'ptModal'; document.body.appendChild(m);
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(17,24,39,.55);z-index:95;display:flex;align-items:flex-start;justify-content:center;padding:40px 12px';
+  m.onclick = ev => { if (ev.target === m) ptCerrar(); };
+  ptPintar(); setTimeout(() => { const i = $('#ptMed'); if (i) i.focus(); }, 30);
+}
+function ptCerrar(){ const m = $('#ptModal'); if (m) m.remove(); }
+document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && $('#ptModal')) ptCerrar(); });
 function ptPintar(){
-  const P = $('#ptPanel'); if (!P) return;
-  if (!PT.abierto){ P.innerHTML = ''; return; }
+  const M = $('#ptModal'); if (!M) return;
   const T = PT_TIPOS[PT.t], op = (v, t) => `<option value="${v}" ${PT.t === v ? 'selected' : ''}>${t}</option>`;
-  P.innerHTML = `<div class="pf" style="flex-direction:column;align-items:stretch;gap:8px">
-    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+  M.innerHTML = `<div style="background:#fff;border-radius:10px;max-width:${PT.rev ? 1080 : 760}px;width:100%;max-height:calc(100vh - 80px);overflow:auto;box-shadow:0 10px 30px #0006;padding:14px 18px">
+    <div class="row" style="align-items:center"><h3 style="flex:1;margin:0;color:var(--az)">📐 Peso teórico de perfiles</h3><button class="b2" onclick="ptCerrar()">Cerrar</button></div>
+    <div class="pf" style="margin-top:10px">
       <label>Perfil<select onchange="PT.t=this.value;PT.v={};ptPintar()">${Object.entries(PT_TIPOS).map(([k, x]) => op(k, x.n)).join('')}</select></label>
-      ${T.c.map(([k, l]) => `<label>${l} (mm)<input type="number" min="0" step="any" value="${PT.v[k] ?? ''}" oninput="PT.v['${k}']=this.value;ptCalc()"></label>`).join('')}
+      <label>Medidas (mm)<input id="ptMed" placeholder="${T.c.map(c => c[0]).join(' x ')}" style="width:130px" oninput="ptMedidas(this.value)"></label>
+      ${T.c.map(([k, l]) => `<label>${l}<input id="pt_${k}" type="number" min="0" step="any" value="${PT.v[k] ?? ''}" oninput="PT.v['${k}']=this.value;ptCalc()"></label>`).join('')}
       ${T.total ? '' : `<label>Largo (m)<input type="number" min="0" step="any" value="${PT.L}" oninput="PT.L=this.value;ptCalc()"></label>`}
-      <div id="ptRes" style="padding:6px 2px;font-size:14px;min-width:220px"></div>
     </div>
-    <div class="muted" style="font-size:11px">Acero 7.850 kg/m³. En perfiles doblados el peso real de fábrica suele ser 2–4 % menor (esquinas redondeadas).${USER.rol === 'admin' ? ` · <a href="#" onclick="PT.rev=!PT.rev;ptPintar();return false">${PT.rev ? 'Ocultar' : 'Revisar perfiles de la base'}</a>` : ''}</div>
-    ${PT.rev && USER.rol === 'admin' ? '<div id="ptRev"></div>' : ''}
+    <div id="ptRes" style="padding:10px 2px 4px;font-size:15px"></div>
+    <div class="muted" style="font-size:11px">Medidas en mm · acero 7.850 kg/m³ · en perfiles doblados el peso real de fábrica suele ser 2–4 % menor (esquinas redondeadas).${USER.rol === 'admin' ? ` · <a href="#" onclick="PT.rev=!PT.rev;ptPintar();return false">${PT.rev ? 'Ocultar revisión' : 'Revisar perfiles de la base'}</a>` : ''}</div>
+    ${PT.rev && USER.rol === 'admin' ? '<div id="ptRev" style="margin-top:8px"></div>' : ''}
   </div>`;
   ptCalc(); if (PT.rev) ptRevPintar();
+}
+function ptMedidas(txt){ // "100x100x3" o "100 100 3" → reparte en los campos en orden
+  const a = String(txt).replace(/,/g, '.').split(/[^0-9.]+/).filter(Boolean), T = PT_TIPOS[PT.t];
+  T.c.forEach(([k], i) => { if (a[i] != null){ PT.v[k] = a[i]; const el = $('#pt_' + k); if (el) el.value = a[i]; } });
+  ptCalc();
 }
 function ptCalc(){
   const R = $('#ptRes'); if (!R) return; const T = PT_TIPOS[PT.t], v = {};
   T.c.forEach(([k]) => v[k] = n(PT.v[k]));
   if (T.c.some(([k]) => !(v[k] > 0))){ R.innerHTML = '<span class="muted">Ingresa las medidas</span>'; return; }
-  if (v.e && ((PT.t === 'cuad' && 2 * v.e >= v.L) || (PT.t === 'rect' && 2 * v.e >= v.B) || (PT.t === 'red' && 2 * v.e >= v.D))){ R.innerHTML = '<span class="err">Espesor demasiado grande</span>'; return; }
+  if (v.e && (((PT.t === 'cuad' || PT.t === 'rect') && 2 * v.e >= Math.min(v.A, v.B)) || (PT.t === 'red' && 2 * v.e >= v.D) || ((PT.t === 'ang' || PT.t === 'canal' || PT.t === 'cost') && v.e >= Math.min(...T.c.filter(c => c[0] !== 'e').map(c => v[c[0]]))))){ R.innerHTML = '<span class="err">El espesor no calza con las medidas: revisa el orden (lados primero, espesor al final)</span>'; return; }
   const k = T.f(v), L = n(PT.L);
   R.innerHTML = T.total ? `<b>${fmt(k, 2)} kg</b> la plancha` : `<b>${fmt(k, 3)} kg/m</b>${L > 0 ? ` · <b>${fmt(k * L, 2)} kg</b> por tira de ${fmtN(L)} m` : ''}`;
 }
@@ -2488,7 +2501,7 @@ function ptRevPintar(){
     <div style="max-height:340px;overflow:auto"><table><thead><tr><th></th><th>Código</th><th>Descripción</th><th>Perfil</th><th>Medidas</th><th>Largo</th><th>Peso actual</th><th>Teórico</th><th>Dif.</th></tr></thead><tbody>
     ${l.map(x => `<tr><td><input type="checkbox" ${PT.sel[x.c] ? 'checked' : ''} onchange="PT.sel['${esc(x.c)}']=this.checked;ptRevPintar()"></td><td>${esc(x.c)}</td><td>${esc(x.d)}${x.conf === 'EDITADO' ? ' <span class="tag">EDITADO</span>' : ''}</td><td>${PT_TIPOS[x.r.t].n}</td><td>${ptMed(x.r)}</td>
       <td>${PT_TIPOS[x.r.t].total ? '—' : fmtN(x.r.L) + ' m' + (x.r.Lsup ? ' <span class="muted" title="No viene en la descripción: se supone tira de 6 m">*</span>' : '')}</td>
-      <td style="text-align:right">${fmt(x.bd, 2)}</td><td style="text-align:right"><b>${fmt(x.teo, 2)}</b></td><td style="text-align:right" class="${Math.abs(x.dif) > 10 ? 'err' : ''}">${x.dif > 0 ? '+' : ''}${fmt(x.dif, 1)} %</td></tr>`).join('') || '<tr><td colspan="9" class="muted">Sin diferencias sobre el umbral.</td></tr>'}
+      <td style="text-align:right">${fmt(x.bd, 2)}</td><td style="text-align:right"><b>${fmt(x.teo, 2)}</b></td><td style="text-align:right;white-space:nowrap" class="${Math.abs(x.dif) > 10 ? 'err' : ''}">${x.dif > 0 ? '+' : ''}${fmt(x.dif, 1)} %</td></tr>`).join('') || '<tr><td colspan="9" class="muted">Sin diferencias sobre el umbral.</td></tr>'}
     </tbody></table></div>`;
   B._l = l;
 }
@@ -2498,7 +2511,7 @@ function ptAplicar(){
   if (!confirm(`Se reemplazará el peso de ${l.length} producto(s) por su peso teórico (quedan como EDITADO; puedes volver a corregirlos con "Corregir").\n¿Continuar?`)) return;
   l.forEach(x => {
     const r = x.r, v = r.v;
-    const dm = { cuad: [v.L, v.L], rect: [v.A, v.B], red: [v.D, v.D], barra: [v.D, v.D], bcuad: [v.L, v.L], ang: [v.A, v.B], canal: [v.H, v.B], cost: [v.H, v.B], plet: [v.A, v.e], plan: [v.A, v.e] }[r.t].map(z => +(z / 1000).toFixed(4));
+    const dm = { cuad: [v.A, v.B], rect: [v.A, v.B], red: [v.D, v.D], barra: [v.D, v.D], bcuad: [v.L, v.L], ang: [v.A, v.B], canal: [v.H, v.B], cost: [v.H, v.B], plet: [v.A, v.e], plan: [v.A, v.e] }[r.t].map(z => +(z / 1000).toFixed(4));
     const largo = r.t === 'plan' ? +(v.B / 1000).toFixed(3) : r.L, ancho = dm[0], alto = dm[1]; // medidas exactas de la descripción
     S.overrides[norm(x.c)] = { desc: x.d, peso: +x.teo.toFixed(2), largo, ancho, alto, vol: +(largo * ancho * alto).toFixed(4), por: USER.u, fecha: hoy(), origen: 'peso teórico perfil' };
   });
@@ -2511,12 +2524,12 @@ function vProductos(){
     <label><span><input type="checkbox" id="qAct" checked onchange="buscar()"> Solo activos</span></label>
     <label><span><input type="checkbox" id="qEst" onchange="buscar()"> Solo estantería</span></label></div>
     <div class="row" style="margin-top:8px;align-items:center"><button class="b2" onclick="pfAbrir()">⚙ Filtros<span class="pfn" id="pfN"></span></button><button class="b2" id="pfLimp" onclick="pfLimpiar()" style="border-color:var(--bd);color:var(--mu)">Limpiar</button><button class="b2" onclick="ptAbrir()" style="margin-left:auto">📐 Perfiles</button></div>
-    <div id="pfPanel"></div><div id="ptPanel"></div><div class="pfbar" id="resBar"></div>
+    <div id="pfPanel"></div><div class="pfbar" id="resBar"></div>
     <div id="res" style="max-height:420px;overflow:auto"></div>
     <p class="muted">${PRODUCTOS.length.toLocaleString("es-CL")} productos (${PRODUCTOS.filter(p => p[9] !== "S").length.toLocaleString("es-CL")} de bodega · ${PRODUCTOS.filter(p => p[9] === "S").length.toLocaleString("es-CL")} de sala) con peso estimado. ALTA = dato exacto o calculado con medidas · MEDIA = con un supuesto · BAJA = valor típico · REVISAR = genérico (corrígelo con el botón Corregir).</p></div>
     <div class="card"><h2>Calcular traspaso / carga</h2><div id="calc"></div></div>
     ${USER.rol === 'admin' ? '<div class="card" id="catCard"></div>' : ''}`;
-  pfPintar(); ptPintar(); buscar(); pintarCalc(); if (USER.rol === 'admin') pintarCat();
+  pfPintar(); buscar(); pintarCalc(); if (USER.rol === 'admin') pintarCat();
 }
 /* ---- Filtros e impresión del buscador de productos ---- */
 let PF = { fam: '', sub: '', tipo: '', pmin: '', pmax: '', conf: '', orden: '', abierto: false }, PF_RES = [];
