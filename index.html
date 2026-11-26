@@ -849,7 +849,7 @@ const EST_TRAMOS_DEF = [
   // Medidas de "Plano v2 (3)", Excel v4 (siempre ALTO x ANCHO). ancho = ancho de columna; si el nivel se divide en n partes, cada una mide (ancho - (n-1) x sep) / n y entre ellas queda el separador (sep).
   { id: 'G1', nombre: 'Grupo 1', color: '#FFC7CE', cols: 3, ancho: 150, sep: 4, niveles: [49, 31, 40, 40, 40, 39] },
   { id: 'G2', nombre: 'Grupo 2', color: '#FFEB9C', cols: 5, ancho: 150, sep: 4, niveles: [49, 31, 40, 40, 40, 39] },
-  { id: 'G3', nombre: 'Grupo 3', color: '#C6EFCE', cols: 1, ancho: 150, sep: 4, niveles: [49, 49, 49, 49, 49, 49] },
+  { id: 'G3', nombre: 'Grupo 3', color: '#C6EFCE', cols: 1, ancho: 150, sep: 4, parte: 34, niveles: [49, 31, 40, 40, 40, 39] }, // col 9: 4 partes de 34 cm (Excel)
   { id: 'G4', nombre: 'Grupo 4', color: '#BDD7EE', cols: 5, ancho: 150, sep: 4, niveles: [49, 31, 40, 40, 40, 39] },
   { id: 'G5', nombre: 'Grupo 5', color: '#E4DFEC', cols: 9, ancho: 150, sep: 4, niveles: [49, 31, 40, 40, 40, 39] },
   { id: 'G6', nombre: 'Grupo 6', color: '#F8CBAD', cols: 7, ancho: 150, sep: 4, niveles: [49, 31, 40, 40, 40, 39] }
@@ -897,10 +897,12 @@ function estColores(e, forzar){ // colores automáticos: familia = tono, subfami
 }
 function estInit(){
   const e = S.estanteria = S.estanteria || {};
-  if (e.version !== 3 && e.version !== 4 && e.version !== 5 && e.version !== 6 && e.version !== 7){ Object.keys(e).forEach(k => delete e[k]); e.version = 3; }
+  if (e.version !== 3 && e.version !== 4 && e.version !== 5 && e.version !== 6 && e.version !== 7 && e.version !== 8){ Object.keys(e).forEach(k => delete e[k]); e.version = 3; }
   if (e.version === 3){ e.celdas = {}; delete e.tramos; e.version = 4; }
   if (e.version === 4 || e.version === 5 || e.version === 6){ delete e.tramos; e.version = 7; } // medidas reales del Excel v4 (Plano v2 (3)); lo ubicado en cada casillero se conserva // distribución nueva: se parte sin materiales asignados
   if (!e.tramos) e.tramos = JSON.parse(JSON.stringify(EST_TRAMOS_DEF));
+  if (e.version === 7){ const g = e.tramos.find(t => t.id === 'G3'), d = EST_TRAMOS_DEF.find(t => t.id === 'G3'); if (g){ g.niveles = d.niveles.slice(); g.parte = d.parte; } e.version = 8; } // col 9 según Excel v4: alturas como las demás columnas y partes de 34 cm (lo ubicado se conserva)
+  if (!e.version || e.version < 8) e.version = 8;
   e.cant = e.cant || {}; e.famCol = e.famCol || {}; e.subCol = e.subCol || {}; e.famAb = e.famAb || {}; e.subAb = e.subAb || {}; e.celdas = e.celdas || {};
   if (!e.prods){ e.prods = {}; EST_DEF.forEach(([c, f, s, lab], i) => { if (!e.prods[c]) e.prods[c] = { f, s, lab, n: i + 1 }; }); e.sigN = EST_DEF.length + 1; }
   e.modo = e.modo || 'familia';
@@ -908,6 +910,7 @@ function estInit(){
   if (typeof pmMigrar === 'function') pmMigrar(e);
   return e;
 }
+const wp = (t, n) => n > 1 && t.parte ? t.parte : (t.ancho - (n - 1) * (t.sep || 0)) / n; // ancho real de cada parte (cm)
 function estCeldas(){
   const e = estInit(), cel = []; let col = 0, x = 0;
   e.tramos.forEach(t => {
@@ -916,7 +919,7 @@ function estCeldas(){
       col++; let y = 0, niv = 0;
       for (let k = filas.length - 1; k >= 0; k--){
         const f = filas[k], h = f.ls.reduce((a, l) => a + hl[l], 0); niv += f.ls.length;
-        for (let q = 0; q < f.sub; q++) cel.push({ id: col + f.l + (f.sub > 1 ? '.' + (q + 1) : ''), col, niv, letra: f.l, ls: f.ls, sub: q + 1, nsub: f.sub, t: t.id, x: x + q * ((t.ancho - (f.sub - 1) * (t.sep || 0)) / f.sub + (t.sep || 0)), w: (t.ancho - (f.sub - 1) * (t.sep || 0)) / f.sub, dx: x + q * t.ancho / f.sub, dw: t.ancho / f.sub, y, h }); // dx/dw: solo para dibujar (sin perfiles); x/w: medidas reales
+        for (let q = 0; q < f.sub; q++) cel.push({ id: col + f.l + (f.sub > 1 ? '.' + (q + 1) : ''), col, niv, letra: f.l, ls: f.ls, sub: q + 1, nsub: f.sub, t: t.id, x: x + (f.sub > 1 ? q * (t.ancho - wp(t, f.sub)) / (f.sub - 1) : 0), w: wp(t, f.sub), dx: x + q * t.ancho / f.sub, dw: t.ancho / f.sub, y, h }); // dx/dw: solo para dibujar (sin perfiles); x/w: medidas reales
         y += h;
       }
       x += t.ancho;
@@ -2384,18 +2387,136 @@ function guardarTurnoDia(pid, d){
 
 /* ===================== PRODUCTOS ===================== */
 let CALC = [];
+/* ===================== PESO TEÓRICO DE PERFILES METÁLICOS (acero 7.850 kg/m³, medidas en mm) ===================== */
+const PT_TIPOS = {
+  cuad: { n: 'Cuadrado (tubo)', c: [['L', 'Lado'], ['e', 'Espesor']], f: v => (v.L * v.L - (v.L - 2 * v.e) ** 2) * 0.00785 },
+  rect: { n: 'Rectangular (tubo)', c: [['A', 'Lado mayor'], ['B', 'Lado menor'], ['e', 'Espesor']], f: v => (v.A * v.B - (v.A - 2 * v.e) * (v.B - 2 * v.e)) * 0.00785 },
+  red: { n: 'Redondo (tubo / cañería)', c: [['D', 'Diámetro ext.'], ['e', 'Espesor']], f: v => (v.D - v.e) * v.e * 0.02466 },
+  barra: { n: 'Barra redonda maciza', c: [['D', 'Diámetro']], f: v => v.D * v.D * 0.006165 },
+  bcuad: { n: 'Barra cuadrada maciza', c: [['L', 'Lado']], f: v => v.L * v.L * 0.00785 },
+  ang: { n: 'Ángulo (L)', c: [['A', 'Ala 1'], ['B', 'Ala 2'], ['e', 'Espesor']], f: v => (v.A + v.B - v.e) * v.e * 0.00785 },
+  canal: { n: 'Canal (U)', c: [['H', 'Alma'], ['B', 'Ala'], ['e', 'Espesor']], f: v => (v.H + 2 * v.B - 2 * v.e) * v.e * 0.00785 },
+  cost: { n: 'Costanera (C)', c: [['H', 'Alma'], ['B', 'Ala'], ['C', 'Pestaña'], ['e', 'Espesor']], f: v => (v.H + 2 * v.B + 2 * v.C - 4 * v.e) * v.e * 0.00785 },
+  plet: { n: 'Pletina (barra plana)', c: [['A', 'Ancho'], ['e', 'Espesor']], f: v => v.A * v.e * 0.00785 },
+  plan: { n: 'Plancha', c: [['A', 'Ancho'], ['B', 'Largo'], ['e', 'Espesor']], f: v => v.A / 1000 * v.B / 1000 * v.e * 7.85, total: true }
+};
+/* Reconoce el perfil desde la descripción: { t, v, L, Lsup } (L = largo m; Lsup = largo supuesto 6 m) o null */
+function ptDetectar(desc){
+  let d = ' ' + String(desc || '').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/(\d),(\d)/g, '$1.$2') + ' ';
+  if (/PVC|PPR|COBRE|DIAMANT|BISAGRA|PERNO|PINA |SIMPSON|SOPORTE|CAJA |PARA |P\/|VINYL|SIDING|ZINCALUM|ALUMINIO|POLICARBONATO|KNAUF|TABIQUE|ESQUINERO|CIELO|CANALETA|GALVANIZADO|CANDADO|THERMO|POLIPE|CONDUIT|VELA|ALFOMBRA/.test(d)) return null;
+  let t = null;
+  if (/TUBULAR CUADRADO|PERFIL CUADRADO/.test(d)) t = 'cuad';
+  else if (/TUBULAR RECTANGULAR|PERFIL RECTANGULAR/.test(d)) t = 'rect';
+  else if (/TUBULAR REDONDO|TUBO FIERRO/.test(d)) t = 'red';
+  else if (/FIERRO REDONDO|FIERRO A-?\d\d|FIERRO A \d/.test(d)) t = 'barra';
+  else if (/FIERRO CUADRADO/.test(d)) t = 'bcuad';
+  else if (/ANGULO/.test(d)) t = 'ang';
+  else if (/COSTANERA|PERFIL C /.test(d)) t = 'cost';
+  else if (/PERFIL CANAL|PERFIL U | CANAL /.test(d)) t = 'canal';
+  else if (/BARRA PLANA|^\s*PLETINA \d|FIERRO PLETINA/.test(d)) t = 'plet';
+  else if (/PLANCHA FIERRO|PLANCAH FIERRO|PLANCHA LAMINAD/.test(d)) t = 'plan';
+  if (!t) return null;
+  let L = null; const ml = d.match(/[X\s](\d+(?:\.\d+)?)\s*(?:MTS|MT|METROS|M)(?![A-Z0-9])/);
+  if (ml && t !== 'plan'){ L = +ml[1]; d = d.replace(ml[0], ' '); }
+  const T = PT_TIPOS[t], k = T.c.map(c => c[0]), v = {};
+  if (t === 'barra' || t === 'bcuad'){ const m = d.match(/(\d+(?:\.\d+)?)\s*MM/); if (!m) return null; v[k[0]] = +m[1]; }
+  else if (t === 'red'){
+    d = d.replace(/(\D)([1357]) ([248])X/, '$1$2/$3X'); // "5 8X1.5" = 5/8"
+    let m = d.match(/(?:(\d)\s?)?(\d)\/(\d)\s*X\s*(\d+(?:\.\d+)?)\s*(?:MM)?/), D, e;
+    if (m){ D = (+(m[1] || 0) + m[2] / m[3]) * 25.4; e = +m[4]; }
+    else { m = d.match(/(\d+(?:\.\d+)?)\s*X\s*(\d+(?:\.\d+)?)\s*(?:MM)?/); if (!m) return null; D = +m[1]; e = +m[2]; if (D <= 6) D *= 25.4; }
+    v.D = +D.toFixed(2); v.e = e;
+  } else if (t === 'plan' && /(\d+(?:\.\d+)?)\s*X\s*(\d+(?:\.\d+)?)\s*MTS?\s*X\s*(\d+(?:\.\d+)?)\s*MM/.test(d)){ // "1X3MT X 2MM" (metros)
+    const m = d.match(/(\d+(?:\.\d+)?)\s*X\s*(\d+(?:\.\d+)?)\s*MTS?\s*X\s*(\d+(?:\.\d+)?)\s*MM/); v.A = m[1] * 1000; v.B = m[2] * 1000; v.e = +m[3];
+  } else {
+    const gs = (d.match(/\d+(?:\.\d+)?(?:\s*X\s*\d+(?:\.\d+)?)+/g) || []).map(g => g.split(/\s*X\s*/).map(Number));
+    let n = gs.filter(g => g.length === k.length || (t === 'cuad' && g.length === 3 && g[0] === g[1])).pop();
+    if (!n) return null;
+    if (t === 'cuad'){ if (n.length === 3) n = [n[0], n[2]]; }
+    if (t === 'rect' && n[1] > n[0]) n = [n[1], n[0], n[2]];
+    k.forEach((c, i) => v[c] = n[i]);
+  }
+  if (k.some(c => !(v[c] > 0))) return null;
+  const Lsup = !T.total && !L; if (Lsup) L = 6;
+  if (!(T.f(v) > 0)) return null;
+  return { t, v, L, Lsup };
+}
+const ptKgm = r => PT_TIPOS[r.t].f(r.v);
+const ptPeso = r => PT_TIPOS[r.t].total ? ptKgm(r) : ptKgm(r) * r.L;
+const ptMed = r => PT_TIPOS[r.t].c.map(c => fmtN(r.v[c[0]])).join('×') + ' mm';
+const fmtN = x => String(+(+x).toFixed(2)).replace('.', ',');
+/* Lista de perfiles de la base con su peso teórico (usa la corrección vigente si existe) */
+function ptRevision(){
+  const out = [];
+  PRODUCTOS.forEach(p => { const r = ptDetectar(p[1]); if (!r) return; const x = producto(p[0]) || {}, teo = ptPeso(r), bd = +x.peso || 0; out.push({ c: p[0], d: x.desc || p[1], r, teo, bd, conf: x.conf || p[7], lbd: +x.largo || 0, dif: teo > 0 ? (bd - teo) / teo * 100 : 0 }); });
+  return out;
+}
+let PT = { abierto: false, t: 'cuad', v: {}, L: 6, umbral: 3, sel: {}, rev: false };
+function ptAbrir(){ PT.abierto = !PT.abierto; ptPintar(); }
+function ptPintar(){
+  const P = $('#ptPanel'); if (!P) return;
+  if (!PT.abierto){ P.innerHTML = ''; return; }
+  const T = PT_TIPOS[PT.t], op = (v, t) => `<option value="${v}" ${PT.t === v ? 'selected' : ''}>${t}</option>`;
+  P.innerHTML = `<div class="pf" style="flex-direction:column;align-items:stretch;gap:8px">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+      <label>Perfil<select onchange="PT.t=this.value;PT.v={};ptPintar()">${Object.entries(PT_TIPOS).map(([k, x]) => op(k, x.n)).join('')}</select></label>
+      ${T.c.map(([k, l]) => `<label>${l} (mm)<input type="number" min="0" step="any" value="${PT.v[k] ?? ''}" oninput="PT.v['${k}']=this.value;ptCalc()"></label>`).join('')}
+      ${T.total ? '' : `<label>Largo (m)<input type="number" min="0" step="any" value="${PT.L}" oninput="PT.L=this.value;ptCalc()"></label>`}
+      <div id="ptRes" style="padding:6px 2px;font-size:14px;min-width:220px"></div>
+    </div>
+    <div class="muted" style="font-size:11px">Acero 7.850 kg/m³. En perfiles doblados el peso real de fábrica suele ser 2–4 % menor (esquinas redondeadas).${USER.rol === 'admin' ? ` · <a href="#" onclick="PT.rev=!PT.rev;ptPintar();return false">${PT.rev ? 'Ocultar' : 'Revisar perfiles de la base'}</a>` : ''}</div>
+    ${PT.rev && USER.rol === 'admin' ? '<div id="ptRev"></div>' : ''}
+  </div>`;
+  ptCalc(); if (PT.rev) ptRevPintar();
+}
+function ptCalc(){
+  const R = $('#ptRes'); if (!R) return; const T = PT_TIPOS[PT.t], v = {};
+  T.c.forEach(([k]) => v[k] = n(PT.v[k]));
+  if (T.c.some(([k]) => !(v[k] > 0))){ R.innerHTML = '<span class="muted">Ingresa las medidas</span>'; return; }
+  if (v.e && ((PT.t === 'cuad' && 2 * v.e >= v.L) || (PT.t === 'rect' && 2 * v.e >= v.B) || (PT.t === 'red' && 2 * v.e >= v.D))){ R.innerHTML = '<span class="err">Espesor demasiado grande</span>'; return; }
+  const k = T.f(v), L = n(PT.L);
+  R.innerHTML = T.total ? `<b>${fmt(k, 2)} kg</b> la plancha` : `<b>${fmt(k, 3)} kg/m</b>${L > 0 ? ` · <b>${fmt(k * L, 2)} kg</b> por tira de ${fmtN(L)} m` : ''}`;
+}
+function ptRevPintar(){
+  const B = $('#ptRev'); if (!B) return;
+  const all = ptRevision(), l = all.filter(x => Math.abs(x.dif) > PT.umbral).sort((a, b) => Math.abs(b.dif) - Math.abs(a.dif));
+  const nsel = l.filter(x => PT.sel[x.c]).length, op = (v, t) => `<option value="${v}" ${+PT.umbral === v ? 'selected' : ''}>${t}</option>`;
+  B.innerHTML = `<div class="pfbar" style="margin:4px 0"><span><b>${all.length}</b> perfiles reconocidos · <b>${l.length}</b> con diferencia
+      <select onchange="PT.umbral=+this.value;PT.sel={};ptRevPintar()">${op(0, 'cualquiera')}${op(1, 'sobre 1 %')}${op(3, 'sobre 3 %')}${op(10, 'sobre 10 %')}</select></span>
+    <span><button class="b2" onclick="ptMarcar(${l.length ? 'true' : 'false'})">${nsel === l.length && l.length ? 'Desmarcar' : 'Marcar'} todos</button>
+    <button class="b2" onclick="ptAplicar()" ${nsel ? '' : 'disabled'}>Usar peso teórico en marcados (${nsel})</button></span></div>
+    <div style="max-height:340px;overflow:auto"><table><thead><tr><th></th><th>Código</th><th>Descripción</th><th>Perfil</th><th>Medidas</th><th>Largo</th><th>Peso actual</th><th>Teórico</th><th>Dif.</th></tr></thead><tbody>
+    ${l.map(x => `<tr><td><input type="checkbox" ${PT.sel[x.c] ? 'checked' : ''} onchange="PT.sel['${esc(x.c)}']=this.checked;ptRevPintar()"></td><td>${esc(x.c)}</td><td>${esc(x.d)}${x.conf === 'EDITADO' ? ' <span class="tag">EDITADO</span>' : ''}</td><td>${PT_TIPOS[x.r.t].n}</td><td>${ptMed(x.r)}</td>
+      <td>${PT_TIPOS[x.r.t].total ? '—' : fmtN(x.r.L) + ' m' + (x.r.Lsup ? ' <span class="muted" title="No viene en la descripción: se supone tira de 6 m">*</span>' : '')}</td>
+      <td style="text-align:right">${fmt(x.bd, 2)}</td><td style="text-align:right"><b>${fmt(x.teo, 2)}</b></td><td style="text-align:right" class="${Math.abs(x.dif) > 10 ? 'err' : ''}">${x.dif > 0 ? '+' : ''}${fmt(x.dif, 1)} %</td></tr>`).join('') || '<tr><td colspan="9" class="muted">Sin diferencias sobre el umbral.</td></tr>'}
+    </tbody></table></div>`;
+  B._l = l;
+}
+function ptMarcar(){ const l = ($('#ptRev') || {})._l || [], todos = l.length && l.every(x => PT.sel[x.c]); l.forEach(x => PT.sel[x.c] = !todos); ptRevPintar(); }
+function ptAplicar(){
+  const l = (($('#ptRev') || {})._l || []).filter(x => PT.sel[x.c]); if (!l.length) return;
+  if (!confirm(`Se reemplazará el peso de ${l.length} producto(s) por su peso teórico (quedan como EDITADO; puedes volver a corregirlos con "Corregir").\n¿Continuar?`)) return;
+  l.forEach(x => {
+    const r = x.r, v = r.v;
+    const dm = { cuad: [v.L, v.L], rect: [v.A, v.B], red: [v.D, v.D], barra: [v.D, v.D], bcuad: [v.L, v.L], ang: [v.A, v.B], canal: [v.H, v.B], cost: [v.H, v.B], plet: [v.A, v.e], plan: [v.A, v.e] }[r.t].map(z => +(z / 1000).toFixed(4));
+    const largo = r.t === 'plan' ? +(v.B / 1000).toFixed(3) : r.L, ancho = dm[0], alto = dm[1]; // medidas exactas de la descripción
+    S.overrides[norm(x.c)] = { desc: x.d, peso: +x.teo.toFixed(2), largo, ancho, alto, vol: +(largo * ancho * alto).toFixed(4), por: USER.u, fecha: hoy(), origen: 'peso teórico perfil' };
+  });
+  PT.sel = {}; guardar(); buscar(); ptRevPintar(); toast(`Peso teórico aplicado a ${l.length} producto(s)`);
+}
+
 function vProductos(){
   $('#main').innerHTML = `<div class="card"><h2>Peso teórico de productos</h2>
     <div class="row"><label style="flex:1">Código o palabras de la descripción<input id="q" placeholder="ej: terciado 15mm, 250125, cemento" oninput="buscar()" autofocus></label>
     <label><span><input type="checkbox" id="qAct" checked onchange="buscar()"> Solo activos</span></label>
     <label><span><input type="checkbox" id="qEst" onchange="buscar()"> Solo estantería</span></label></div>
-    <div class="row" style="margin-top:8px;align-items:center"><button class="b2" onclick="pfAbrir()">⚙ Filtros<span class="pfn" id="pfN"></span></button><button class="b2" id="pfLimp" onclick="pfLimpiar()" style="border-color:var(--bd);color:var(--mu)">Limpiar</button></div>
-    <div id="pfPanel"></div><div class="pfbar" id="resBar"></div>
+    <div class="row" style="margin-top:8px;align-items:center"><button class="b2" onclick="pfAbrir()">⚙ Filtros<span class="pfn" id="pfN"></span></button><button class="b2" id="pfLimp" onclick="pfLimpiar()" style="border-color:var(--bd);color:var(--mu)">Limpiar</button><button class="b2" onclick="ptAbrir()" style="margin-left:auto">📐 Perfiles</button></div>
+    <div id="pfPanel"></div><div id="ptPanel"></div><div class="pfbar" id="resBar"></div>
     <div id="res" style="max-height:420px;overflow:auto"></div>
     <p class="muted">${PRODUCTOS.length.toLocaleString("es-CL")} productos (${PRODUCTOS.filter(p => p[9] !== "S").length.toLocaleString("es-CL")} de bodega · ${PRODUCTOS.filter(p => p[9] === "S").length.toLocaleString("es-CL")} de sala) con peso estimado. ALTA = dato exacto o calculado con medidas · MEDIA = con un supuesto · BAJA = valor típico · REVISAR = genérico (corrígelo con el botón Corregir).</p></div>
     <div class="card"><h2>Calcular traspaso / carga</h2><div id="calc"></div></div>
     ${USER.rol === 'admin' ? '<div class="card" id="catCard"></div>' : ''}`;
-  pfPintar(); buscar(); pintarCalc(); if (USER.rol === 'admin') pintarCat();
+  pfPintar(); ptPintar(); buscar(); pintarCalc(); if (USER.rol === 'admin') pintarCat();
 }
 /* ---- Filtros e impresión del buscador de productos ---- */
 let PF = { fam: '', sub: '', tipo: '', pmin: '', pmax: '', conf: '', orden: '', abierto: false }, PF_RES = [];
