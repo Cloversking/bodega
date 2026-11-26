@@ -57,7 +57,7 @@ td input,td select{width:100%;padding:4px}
 .famb{display:inline-flex;align-items:center;gap:4px;border:1px solid;border-radius:10px;padding:0 7px;font-size:11px;line-height:17px;white-space:nowrap}.famb i{width:8px;height:8px;border-radius:50%;display:inline-block}
 .leyenda{background:#fff;padding:6px 8px;border:1px solid #999;border-radius:5px;font-size:11px;line-height:1.5;max-width:270px}
 .sw{width:12px;height:12px;border-radius:50%;display:inline-block;border:2px solid #0003;vertical-align:middle}
-.titulo-print{display:none}@media print{.titulo-print{display:block;font-size:15px;font-weight:bold;margin:0 0 4px}}
+.pf{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;padding:10px 12px;margin-top:8px;border:1px solid var(--bd);border-radius:8px;background:#f8fafc}.pf label{display:flex;flex-direction:column;font-size:12px;color:var(--mu);gap:3px}.pf input[type=number]{width:84px}.pfn{display:inline-block;min-width:16px;padding:0 5px;margin-left:5px;border-radius:9px;background:var(--az);color:#fff;font-size:11px;line-height:16px;text-align:center}.pfn:empty{display:none}.pfbar{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:10px 0 4px}.titulo-print{display:none}@media print{.titulo-print{display:block;font-size:15px;font-weight:bold;margin:0 0 4px}}
 </style>
 <link rel="manifest" href="manifest.json">
 <script src="catalogo.js"></script>
@@ -849,7 +849,7 @@ const EST_TRAMOS_DEF = [
   // Medidas de "Plano v2 (3)", Excel v4 (siempre ALTO x ANCHO). ancho = ancho de columna; si el nivel se divide en n partes, cada una mide (ancho - (n-1) x sep) / n y entre ellas queda el separador (sep).
   { id: 'G1', nombre: 'Grupo 1', color: '#FFC7CE', cols: 3, ancho: 150, sep: 4, niveles: [49, 31, 40, 40, 40, 39] },
   { id: 'G2', nombre: 'Grupo 2', color: '#FFEB9C', cols: 5, ancho: 150, sep: 4, niveles: [49, 31, 40, 40, 40, 39] },
-  { id: 'G3', nombre: 'Grupo 3', color: '#C6EFCE', cols: 1, ancho: 150, sep: 4, niveles: [49, 31, 40, 40, 40, 39] },
+  { id: 'G3', nombre: 'Grupo 3', color: '#C6EFCE', cols: 1, ancho: 150, sep: 4, niveles: [49, 49, 49, 49, 49, 49] },
   { id: 'G4', nombre: 'Grupo 4', color: '#BDD7EE', cols: 5, ancho: 150, sep: 4, niveles: [49, 31, 40, 40, 40, 39] },
   { id: 'G5', nombre: 'Grupo 5', color: '#E4DFEC', cols: 9, ancho: 150, sep: 4, niveles: [49, 31, 40, 40, 40, 39] },
   { id: 'G6', nombre: 'Grupo 6', color: '#F8CBAD', cols: 7, ancho: 150, sep: 4, niveles: [49, 31, 40, 40, 40, 39] }
@@ -864,7 +864,7 @@ const estHolg = () => (S.estanteria && S.estanteria.holg != null ? S.estanteria.
 // Cuántas piezas caben en el frente del casillero (ancho x alto), probando el perfil parado y acostado, con holgura entre piezas. n = productos que comparten el casillero (cada uno ocupa 1/n del ancho, como en el dibujo).
 function estCabe(cod, c, n){
   const p = PROD_MAP[cod]; if (!p) return null; const a = +p[4] * 100, b = +p[5] * 100; if (!(a > 0 && b > 0)) return null;
-  const W = c.wr / Math.max(1, n || 1), H = c.h, h = estHolg(), f = (x, y) => Math.floor((W + 1e-9) / (x + h)) * Math.floor((H + 1e-9) / (y + h));
+  const W = c.w / Math.max(1, n || 1), H = c.h, h = estHolg(), f = (x, y) => Math.floor((W + 1e-9) / (x + h)) * Math.floor((H + 1e-9) / (y + h));
   return Math.max(f(a, b), f(b, a));
 }
 const estCabeTxt = (cod, c, n, cant) => { const k = estCabe(cod, c, n); if (k == null) return '<span class="muted">sin medidas</span>'; return k < 1 ? '<span class="err">0 · no cabe</span>' : `<b>${fmt(k, 0)}</b> un.${cant != null && cant !== '' && +cant > k ? ` <span class="err" title="Anotaste ${cant}">⚠ más de lo que cabe</span>` : ''}`; };
@@ -897,9 +897,9 @@ function estColores(e, forzar){ // colores automáticos: familia = tono, subfami
 }
 function estInit(){
   const e = S.estanteria = S.estanteria || {};
-  if (e.version !== 3 && e.version !== 4 && e.version !== 5 && e.version !== 6 && e.version !== 7 && e.version !== 8){ Object.keys(e).forEach(k => delete e[k]); e.version = 3; }
+  if (e.version !== 3 && e.version !== 4 && e.version !== 5 && e.version !== 6 && e.version !== 7){ Object.keys(e).forEach(k => delete e[k]); e.version = 3; }
   if (e.version === 3){ e.celdas = {}; delete e.tramos; e.version = 4; }
-  if (e.version === 4 || e.version === 5 || e.version === 6 || e.version === 7){ delete e.tramos; e.version = 8; } // medidas reales del Excel v4 (Plano v2 (3)); lo ubicado en cada casillero se conserva // distribución nueva: se parte sin materiales asignados
+  if (e.version === 4 || e.version === 5 || e.version === 6){ delete e.tramos; e.version = 7; } // medidas reales del Excel v4 (Plano v2 (3)); lo ubicado en cada casillero se conserva // distribución nueva: se parte sin materiales asignados
   if (!e.tramos) e.tramos = JSON.parse(JSON.stringify(EST_TRAMOS_DEF));
   e.cant = e.cant || {}; e.famCol = e.famCol || {}; e.subCol = e.subCol || {}; e.famAb = e.famAb || {}; e.subAb = e.subAb || {}; e.celdas = e.celdas || {};
   if (!e.prods){ e.prods = {}; EST_DEF.forEach(([c, f, s, lab], i) => { if (!e.prods[c]) e.prods[c] = { f, s, lab, n: i + 1 }; }); e.sigN = EST_DEF.length + 1; }
@@ -916,7 +916,7 @@ function estCeldas(){
       col++; let y = 0, niv = 0;
       for (let k = filas.length - 1; k >= 0; k--){
         const f = filas[k], h = f.ls.reduce((a, l) => a + hl[l], 0); niv += f.ls.length;
-        for (let q = 0; q < f.sub; q++) cel.push({ id: col + f.l + (f.sub > 1 ? '.' + (q + 1) : ''), col, niv, letra: f.l, ls: f.ls, sub: q + 1, nsub: f.sub, t: t.id, x: x + q * t.ancho / f.sub, w: t.ancho / f.sub, wr: (t.ancho - (f.sub - 1) * (t.sep || 0)) / f.sub, y, h }); // x,w = dibujo (sin separadores); wr = medida real del casillero
+        for (let q = 0; q < f.sub; q++) cel.push({ id: col + f.l + (f.sub > 1 ? '.' + (q + 1) : ''), col, niv, letra: f.l, ls: f.ls, sub: q + 1, nsub: f.sub, t: t.id, x: x + q * ((t.ancho - (f.sub - 1) * (t.sep || 0)) / f.sub + (t.sep || 0)), w: (t.ancho - (f.sub - 1) * (t.sep || 0)) / f.sub, y, h });
         y += h;
       }
       x += t.ancho;
@@ -986,7 +986,7 @@ function estSVG(desde, hasta, o){
       px += w;
     });
     s += `<text x="${cx + cw - 2}" y="${cy + 9}" font-size="7.5" text-anchor="end" fill="${l.length && !bn ? '#000' : '#777'}" pointer-events="none" ${l.length && !bn ? 'paint-order="stroke" stroke="#fff" stroke-width="2"' : ''}>${c.id}</text>`;
-    if (!o.imp) s += `<rect x="${cx}" y="${cy}" width="${cw}" height="${ch}" fill="transparent" stroke="${sel ? '#e00' : 'none'}" stroke-width="3.5" onclick="estClic(event,'${c.id}')" style="cursor:pointer"><title>${c.id} · ${c.h}×${Math.round(c.wr * 10) / 10} cm (alto × ancho)${l.length ? '\n' + l.map(cod => { const k = estCabe(cod, c, l.length); return `#${(e.prods[cod] || {}).n || '?'} ${cod} ${estDesc(cod)}${k != null ? ' · caben ' + k : ''}${(e.cant[c.id] || {})[cod] != null ? ' · cant. ' + e.cant[c.id][cod] : ''}`; }).join('\n') : ' · vacío'}</title></rect>`;
+    if (!o.imp) s += `<rect x="${cx}" y="${cy}" width="${cw}" height="${ch}" fill="transparent" stroke="${sel ? '#e00' : 'none'}" stroke-width="3.5" onclick="estClic(event,'${c.id}')" style="cursor:pointer"><title>${c.id} · ${c.h}×${c.w} cm (alto × ancho)${l.length ? '\n' + l.map(cod => { const k = estCabe(cod, c, l.length); return `#${(e.prods[cod] || {}).n || '?'} ${cod} ${estDesc(cod)}${k != null ? ' · caben ' + k : ''}${(e.cant[c.id] || {})[cod] != null ? ' · cant. ' + e.cant[c.id][cod] : ''}`; }).join('\n') : ' · vacío'}</title></rect>`;
   });
   s += `<line x1="${izq - 4}" y1="${Y(0)}" x2="${W - 4}" y2="${Y(0)}" stroke="#000" stroke-width="2"/>`;
   [...new Set(cs.map(c => c.col))].forEach(cn => { const c = cs.find(z => z.col === cn); s += `<text x="${X(c.x + c.w / 2)}" y="${Y(0) + 14}" font-size="11" text-anchor="middle" font-weight="bold">${cn}</text>`; });
@@ -1559,7 +1559,7 @@ function vEstanteriaHTML(){
     const c1 = EST_SEL.length === 1 ? cel.find(z => z.id === EST_SEL[0]) : null, selCods = [...new Set(EST_SEL.flatMap(id => e.celdas[id] || []))];
     if (c1){
       const l = e.celdas[c1.id] || [];
-      pDet = `<div class="row" style="align-items:center;flex-wrap:wrap"><b style="font-size:16px;flex:1">📦 Casillero ${c1.id}</b><span class="muted">columna ${c1.col} · nivel ${c1.ls.join('+')}${c1.ls.includes('F') ? ' (piso)' : ''}${c1.nsub > 1 ? ` · parte ${c1.sub} de ${c1.nsub}` : ''} · ${c1.h}×${Math.round(c1.wr * 10) / 10} cm (alto × ancho)</span></div>
+      pDet = `<div class="row" style="align-items:center;flex-wrap:wrap"><b style="font-size:16px;flex:1">📦 Casillero ${c1.id}</b><span class="muted">columna ${c1.col} · nivel ${c1.ls.join('+')}${c1.ls.includes('F') ? ' (piso)' : ''}${c1.nsub > 1 ? ` · parte ${c1.sub} de ${c1.nsub}` : ''} · ${c1.h}×${Math.round(c1.w * 10) / 10} cm (alto × ancho)</span></div>
         <div class="row" style="margin:6px 0;flex-wrap:wrap"><button class="b" onclick="estUbAbrir(null,'${c1.id}')">＋ Agregar producto aquí</button><button class="b2" onclick="pmAbrir('${c1.id}')" title="Poner una descripción que no está en la base">✍ Descripción libre aquí</button>${l.length ? `<button class="b2" onclick="estVaciar()">Vaciar</button>` : ''}<button class="b2" onclick="EST_SEL=[];vEstanteria()">Quitar selección</button></div>
         ${l.length ? `<table><thead><tr><th>Orden</th><th></th><th>Producto</th><th>Cantidad</th><th>Caben (holgura ${fmt(estHolg() * 10, 0)} mm)</th><th>También en</th><th></th></tr></thead><tbody>${l.map((c, i) => { const p = e.prods[c] || { f: '?', s: '?', n: '?', col: '#ddd' };
           return `<tr ${EST_MOV && EST_MOV.c === c ? 'style="background:#fff3c4"' : ''}><td style="white-space:nowrap"><button class="b2" title="Más a la izquierda" onclick="estMoverEnCelda('${c1.id}',${i},-1)">◀</button><button class="b2" title="Más a la derecha" onclick="estMoverEnCelda('${c1.id}',${i},1)">▶</button></td>
@@ -2389,26 +2389,79 @@ function vProductos(){
     <div class="row"><label style="flex:1">Código o palabras de la descripción<input id="q" placeholder="ej: terciado 15mm, 250125, cemento" oninput="buscar()" autofocus></label>
     <label><span><input type="checkbox" id="qAct" checked onchange="buscar()"> Solo activos</span></label>
     <label><span><input type="checkbox" id="qEst" onchange="buscar()"> Solo estantería</span></label></div>
-    <div id="res" style="max-height:420px;overflow:auto;margin-top:8px"></div>
+    <div class="row" style="margin-top:8px;align-items:center"><button class="b2" onclick="pfAbrir()">⚙ Filtros<span class="pfn" id="pfN"></span></button><button class="b2" id="pfLimp" onclick="pfLimpiar()" style="border-color:var(--bd);color:var(--mu)">Limpiar</button></div>
+    <div id="pfPanel"></div><div class="pfbar" id="resBar"></div>
+    <div id="res" style="max-height:420px;overflow:auto"></div>
     <p class="muted">${PRODUCTOS.length.toLocaleString("es-CL")} productos (${PRODUCTOS.filter(p => p[9] !== "S").length.toLocaleString("es-CL")} de bodega · ${PRODUCTOS.filter(p => p[9] === "S").length.toLocaleString("es-CL")} de sala) con peso estimado. ALTA = dato exacto o calculado con medidas · MEDIA = con un supuesto · BAJA = valor típico · REVISAR = genérico (corrígelo con el botón Corregir).</p></div>
     <div class="card"><h2>Calcular traspaso / carga</h2><div id="calc"></div></div>
     ${USER.rol === 'admin' ? '<div class="card" id="catCard"></div>' : ''}`;
-  buscar(); pintarCalc(); if (USER.rol === 'admin') pintarCat();
+  pfPintar(); buscar(); pintarCalc(); if (USER.rol === 'admin') pintarCat();
+}
+/* ---- Filtros e impresión del buscador de productos ---- */
+let PF = { fam: '', sub: '', tipo: '', pmin: '', pmax: '', conf: '', orden: '', abierto: false }, PF_RES = [];
+const pfN = () => ['fam', 'sub', 'tipo', 'pmin', 'pmax', 'conf', 'orden'].filter(k => PF[k] !== '').length;
+function pfAbrir(){ PF.abierto = !PF.abierto; pfPintar(); }
+function pfSet(k, v){ PF[k] = v; if (k === 'fam') PF.sub = ''; if (k === 'fam') pfPintar(); else pfCont(); buscar(); }
+function pfLimpiar(){ PF = { fam: '', sub: '', tipo: '', pmin: '', pmax: '', conf: '', orden: '', abierto: PF.abierto }; pfPintar(); buscar(); }
+function pfCont(){ const c = $('#pfN'); if (c) c.textContent = pfN() || ''; const l = $('#pfLimp'); if (l) l.style.display = pfN() ? '' : 'none'; }
+function pfPintar(){
+  const e = estInit(), fams = [...new Set(Object.values(e.prods).map(p => p.f))].sort((a, b) => a.localeCompare(b, 'es'));
+  const subs = PF.fam && PF.fam !== '__SIN__' ? [...new Set(Object.values(e.prods).filter(p => p.f === PF.fam).map(p => p.s))].sort((a, b) => a.localeCompare(b, 'es')) : [];
+  const op = (v, t, cur) => `<option value="${esc(v)}" ${cur === v ? 'selected' : ''}>${esc(t)}</option>`;
+  const P = $('#pfPanel'); if (!P) return;
+  P.innerHTML = !PF.abierto ? '' : `<div class="pf">
+    <label>Familia<select onchange="pfSet('fam',this.value)">${op('', 'Todas', PF.fam)}${op('__SIN__', 'Sin familia', PF.fam)}${fams.map(f => op(f, f, PF.fam)).join('')}</select></label>
+    <label>Subfamilia<select onchange="pfSet('sub',this.value)" ${subs.length ? '' : 'disabled'}>${op('', 'Todas', PF.sub)}${subs.map(s => op(s, s, PF.sub)).join('')}</select></label>
+    <label>Tipo<select onchange="pfSet('tipo',this.value)">${op('', 'Todos', PF.tipo)}${op('B', 'Bodega', PF.tipo)}${op('S', 'Sala', PF.tipo)}</select></label>
+    <label>Peso (kg)<span style="display:flex;gap:4px;align-items:center"><input type="number" min="0" step="any" placeholder="desde" value="${esc(PF.pmin)}" onchange="pfSet('pmin',this.value)"> – <input type="number" min="0" step="any" placeholder="hasta" value="${esc(PF.pmax)}" onchange="pfSet('pmax',this.value)"></span></label>
+    <label>Confianza<select onchange="pfSet('conf',this.value)">${op('', 'Todas', PF.conf)}${['ALTA', 'MEDIA', 'BAJA', 'REVISAR', 'ESTIMADO', 'EDITADO'].map(c => op(c, c, PF.conf)).join('')}</select></label>
+    <label>Ordenar por<select onchange="pfSet('orden',this.value)">${op('', 'Relevancia', PF.orden)}${op('cod', 'Código', PF.orden)}${op('desc', 'Descripción', PF.orden)}${op('pesoA', 'Peso: menor a mayor', PF.orden)}${op('pesoD', 'Peso: mayor a menor', PF.orden)}</select></label></div>`;
+  pfCont();
+}
+function pfPeso(p, ov){ if (ov){ const o = S.overrides[norm(p[0]).trim()]; if (o) return n(o.peso); } return p[2] || 0; }
+function pfResumen(){
+  const t = []; const e = PF;
+  if (e.fam) t.push('Familia: ' + (e.fam === '__SIN__' ? 'sin familia' : e.fam)); if (e.sub) t.push('Subfamilia: ' + e.sub);
+  if (e.tipo) t.push('Tipo: ' + (e.tipo === 'S' ? 'sala' : 'bodega'));
+  if (e.pmin !== '' || e.pmax !== '') t.push('Peso: ' + (e.pmin !== '' ? 'desde ' + e.pmin : '') + (e.pmin !== '' && e.pmax !== '' ? ' ' : '') + (e.pmax !== '' ? 'hasta ' + e.pmax : '') + ' kg');
+  if (e.conf) t.push('Confianza: ' + e.conf);
+  const q = $('#q') && $('#q').value.trim(); if (q) t.push('Búsqueda: «' + q + '»');
+  if ($('#qEst') && $('#qEst').checked) t.push('Solo estantería');
+  return t;
+}
+function pfImprimir(){
+  if (!PF_RES.length) return toast('No hay productos para imprimir');
+  if (PF_RES.length > 1500 && !confirm('Se imprimirán ' + PF_RES.length.toLocaleString('es-CL') + ' productos. ¿Continuar?')) return;
+  const E = estInit(), D = estDonde(), fl = pfResumen();
+  const fila = p => { const c = String(p[0]), f = E.prods[c], x = producto(c); return `<tr><td>${esc(c)}</td><td>${esc(x.desc)}</td><td>${f ? esc(f.f) + ' › ' + esc(f.s) : '<span class="muted">—</span>'}</td><td>${p[9] === 'S' ? 'Sala' : 'Bodega'}</td><td class="num">${fmt(x.peso, 2)}</td><td>${esc((D[c] || []).join(', '))}</td></tr>`; };
+  imprimir('Productos', `<h1>Productos</h1><div class="muted">${fl.length ? esc(fl.join(' · ')) + ' · ' : ''}${PF_RES.length.toLocaleString('es-CL')} producto${PF_RES.length === 1 ? '' : 's'} · ${new Date().toLocaleDateString('es-CL')}</div>
+    <table><thead><tr><th>Código</th><th>Descripción</th><th>Familia</th><th>Tipo</th><th class="num">Peso kg</th><th>Ubicación</th></tr></thead><tbody>${PF_RES.map(fila).join('')}</tbody></table>`);
 }
 function buscar(){
   const q = norm($('#q').value).trim(), act = $('#qAct').checked, est = $('#qEst') && $('#qEst').checked;
-  const words = q.split(/\s+/).filter(Boolean), E = estInit(), D = estDonde();
+  const words = q.split(/\s+/).filter(Boolean), E = estInit(), D = estDonde(), nf = pfN(), CAP = 300;
+  const pmin = PF.pmin === '' ? null : n(PF.pmin), pmax = PF.pmax === '' ? null : n(PF.pmax), ov = Object.keys(S.overrides).length > 0;
   let res = [];
-  if (words.length || est){
+  if (words.length || est || nf){
     for (const p of PRODUCTOS){
-      if (est && !E.prods[p[0]]) continue;
+      const fa = E.prods[String(p[0])];
+      if (est && !fa) continue;
       if (act && !p[8] && !est) continue;
+      if (PF.tipo && (p[9] === 'S' ? 'S' : 'B') !== PF.tipo) continue;
+      if (PF.fam === '__SIN__'){ if (fa) continue; } else if (PF.fam){ if (!fa || fa.f !== PF.fam) continue; if (PF.sub && fa.s !== PF.sub) continue; }
+      if (PF.conf && (ov && S.overrides[norm(p[0]).trim()] ? 'EDITADO' : p[7]) !== PF.conf) continue;
+      if (pmin !== null || pmax !== null){ const w = pfPeso(p, ov); if (!(w > 0) || (pmin !== null && w < pmin) || (pmax !== null && w > pmax)) continue; }
       const hay = hayP(p);
       if (words.every(w => hay.includes(w))) res.push(p);
-      if (res.length >= (est ? 400 : 100)) break;
     }
+    const O = PF.orden;
+    if (O === 'cod') res.sort((a, b) => String(a[0]).localeCompare(String(b[0]), 'es', { numeric: true }));
+    else if (O === 'desc') res.sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'es'));
+    else if (O === 'pesoA' || O === 'pesoD') res.sort((a, b) => (pfPeso(a, ov) - pfPeso(b, ov)) * (O === 'pesoA' ? 1 : -1));
   }
-  $('#res').innerHTML = !words.length && !est ? '<p class="muted">Escribe para buscar.</p>' : !res.length ? '<p class="muted">Sin resultados.</p>' :
+  PF_RES = res; const total = res.length; res = res.slice(0, CAP);
+  const bar = $('#resBar'); if (bar) bar.innerHTML = total ? `<span class="muted">${total.toLocaleString('es-CL')} producto${total === 1 ? '' : 's'}${total > CAP ? ` · se muestran los primeros ${CAP}` : ''}</span><button class="b2" onclick="pfImprimir()">🖨 Imprimir${total > CAP ? ' todos' : ''}</button>` : '';
+  $('#res').innerHTML = !words.length && !est && !nf ? '<p class="muted">Escribe para buscar o elige un filtro.</p>' : !res.length ? '<p class="muted">Sin resultados.</p>' :
   `<table><thead><tr><th>Código</th><th>Descripción</th><th class="num">Peso kg</th><th>Confianza</th><th></th></tr></thead><tbody>
   ${res.map(p => { const x = producto(p[0]); return `<tr><td style="white-space:nowrap">${esc(p[0])}</td><td>${badgeOrigen(p)} ${esc(x.desc)}<div style="margin-top:2px">${famBadge(String(p[0]))} ${famBtn(String(p[0]))} ${ubicBadges(String(p[0]), D)}</div></td><td class="num"><b>${fmt(x.peso, 2)}</b></td><td><span class="tag ${x.conf}">${x.conf}</span>${est ? `<div class="muted" style="font-size:11px">${esc(E.prods[p[0]].f)} › ${esc(E.prods[p[0]].s)}${D[p[0]] ? ' · 📍 ' + D[p[0]].join(', ') : ''}</div>` : ''}</td>
   <td style="white-space:nowrap"><button class="b2" onclick="CALC.push({c:'${esc(p[0])}',q:1});pintarCalc()">+ Agregar al cálculo</button> ${USER.rol === 'admin' ? `<button class="b2" onclick="editarProd('${esc(p[0])}')">Corregir</button>` : ''}</td></tr>`; }).join('')}</tbody></table>`;
