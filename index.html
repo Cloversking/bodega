@@ -944,7 +944,7 @@ const wp = (t, n) => n > 1 && t.parte ? t.parte : (t.ancho - (n - 1) * (t.sep ||
 function estCeldas(){
   const e = estInit(), cel = []; let col = 0, x = 0;
   e.tramos.forEach(t => {
-    const filas = EST_FILAS[t.id] || [], hl = {}; ['A', 'B', 'C', 'D', 'E', 'F'].forEach((l, i) => hl[l] = t.niveles[i] || 40); // niveles: del piso hacia arriba (A = piso)
+    const filas = t.filas || EST_FILAS[t.id] || [], hl = {}; ['A', 'B', 'C', 'D', 'E', 'F'].forEach((l, i) => hl[l] = t.niveles[i] || 40); // t.filas: estructura propia del grupo; niveles: del piso hacia arriba (A = piso)
     for (let i = 0; i < t.cols; i++){
       col++; let y = 0, niv = 0;
       for (let k = filas.length - 1; k >= 0; k--){
@@ -1486,10 +1486,40 @@ function estColorVivo(tipo, k, v, fin){ // aplica y guarda al instante; el plano
 function estColorEdit(tipo, k, v){ const e = S.estanteria; if (tipo === 'f'){ e.famCol[k] = v; estTonos(e, k, null); } else if (tipo === 's'){ e.subCol[k] = v; (e.subFijo = e.subFijo || {})[k] = true; estTonos(e, null, k); } else if (tipo === 'fa') e.famAb[k] = v.trim() || abrev(k); else if (tipo === 'sa') e.subAb[k] = v.trim(); guardar(); vEstanteria(); }
 function estRecolorear(){ if (!confirm('¿Volver a generar todos los colores automáticamente?')) return; S.estanteria.subFijo = {}; estColores(S.estanteria, true); guardar(); vEstanteria(); }
 function estHolgEdit(v){ S.estanteria.holg = Math.max(0, n(v, 2)); guardar(); vEstanteria(); }
+/* ---- Grupos de columnas: dividir, unir y mover columnas entre grupos. Las columnas mantienen su número;
+   si una columna pasa a otro grupo toma la estructura (divisiones) de ese grupo y lo ubicado se traspasa al casillero equivalente. ---- */
+const estFilasDe = t => JSON.parse(JSON.stringify(t.filas || EST_FILAS[t.id] || []));
+function estGrupoAplicar(nuevos, msg){
+  const e = S.estanteria, antes = estCeldas(), viejos = e.tramos; e.tramos = nuevos; const desp = estCeldas(), ids = new Set(desp.map(c => c.id));
+  const mov = [], destino = id => { const c = antes.find(z => z.id === id); if (!c) return null;
+    const cand = desp.filter(z => z.col === c.col && (z.letra === c.letra || z.ls.includes(c.letra))); if (!cand.length) return null;
+    const same = cand.filter(z => z.letra === c.letra), pool = same.length ? same : cand; return (pool.find(z => z.sub === Math.min(c.sub, z.nsub)) || pool[0]).id; };
+  Object.keys(e.celdas).filter(id => !ids.has(id) && (e.celdas[id] || []).length).forEach(id => { const d = destino(id); mov.push([id, d]); });
+  if (mov.length && !confirm(`${msg}\n\nCambia la división de algunas columnas. Lo ubicado en ${mov.length} casillero(s) se traspasa al casillero equivalente:\n\n${mov.map(([a, b]) => `${a} → ${b || '(sin equivalente: se libera)'}`).join('\n')}\n\n¿Continuar?`)){ e.tramos = viejos; return; }
+  mov.forEach(([a, b]) => { const l = e.celdas[a] || [], q = e.cant[a] || {}; delete e.celdas[a]; delete e.cant[a]; if (!b) return; e.celdas[b] = [...new Set((e.celdas[b] || []).concat(l))]; if (Object.keys(q).length) e.cant[b] = Object.assign(e.cant[b] || {}, q); });
+  Object.keys(e.celdas).forEach(id => { if (!ids.has(id)) delete e.celdas[id]; }); EST_SEL = []; EST_ACT = null;
+  guardar(); vEstanteria(); estConfRender(); toast(msg);
+}
+function estGrupoDividir(i, k){ // separa el grupo i en dos: las primeras k columnas y el resto (misma estructura y medidas)
+  const T = JSON.parse(JSON.stringify(S.estanteria.tramos)), t = T[i]; if (k < 1 || k >= t.cols) return;
+  const nuevo = Object.assign({}, JSON.parse(JSON.stringify(t)), { id: 'G' + uid(), nombre: t.nombre + ' (b)', cols: t.cols - k, filas: estFilasDe(t), color: hsl2hex((hex2hsl(t.color)[0] + 40) % 360, 55, 82) });
+  t.cols = k; t.filas = estFilasDe(t); T.splice(i + 1, 0, nuevo); estGrupoAplicar(T, `"${t.nombre}" dividido en dos grupos`);
+}
+function estGrupoUnir(i){ // une el grupo i con el siguiente: las columnas del siguiente toman la estructura y medidas del grupo i
+  const T = JSON.parse(JSON.stringify(S.estanteria.tramos)), t = T[i], s = T[i + 1]; if (!s) return;
+  if (!confirm(`¿Unir "${t.nombre}" con "${s.nombre}"?\nLas columnas de "${s.nombre}" toman la división, el ancho y las alturas de "${t.nombre}".`)) return;
+  t.filas = estFilasDe(t); t.cols += s.cols; T.splice(i + 1, 1); estGrupoAplicar(T, `Grupos unidos en "${t.nombre}"`);
+}
+function estGrupoMover(i, d){ // d=-1: la última columna del grupo i pasa al siguiente; d=+1: la primera del siguiente pasa al grupo i
+  const T = JSON.parse(JSON.stringify(S.estanteria.tramos)), t = T[i], s = T[i + 1]; if (!s) return;
+  t.filas = estFilasDe(t); s.filas = estFilasDe(s);
+  if (d < 0){ if (t.cols < 2) return; t.cols--; s.cols++; } else { if (s.cols < 2) return; s.cols--; t.cols++; }
+  estGrupoAplicar(T, d < 0 ? `Columna pasada a "${s.nombre}"` : `Columna pasada a "${t.nombre}"`);
+}
 function estTramoEdit(i, k, v){
   const t = S.estanteria.tramos[i];
   if (k === 'niveles'){ const a = String(v).split(/[^0-9.]+/).map(Number).filter(x => x > 0); if (!a.length) return toast('Escribe las alturas en cm, de piso hacia arriba, ej: 50,40,40,40,40,40'); if (a.length !== 6) return toast('Son 6 niveles: F, E, D, C, B, A (de piso hacia arriba)'); t.niveles = a; }
-  else if (k === 'nombre') t.nombre = v; else t[k] = Math.max(1, n(v, t[k]));
+  else if (k === 'nombre') t.nombre = v; else if (k === 'color') t.color = v; else t[k] = Math.max(1, n(v, t[k]));
   guardar(); vEstanteria();
 }
 const estFams = e => [...new Set(Object.values(e.prods).map(p => p.f))].sort();
@@ -1694,10 +1724,18 @@ function estConfHTML(){
     + sec('s', 'Subfamilias', subs.length, `<table class="cfT"><tbody>${subs.map(k => fila(k.replace('|', ' ') , e.subCol[k], `((v,x)=>estColorVivo('s','${esc(k)}',v,x))`, `<span class="muted">${esc(k.split('|')[0])} ›</span> ${esc(k.split('|')[1] || '')}`, e.subAb[k], `estColorEdit('sa','${esc(k)}',this.value)`)).join('')}</tbody></table>
       <button class="b2" style="margin-top:6px" onclick="estRecolorear()">🎨 Regenerar colores automáticos</button>`)
     + sec('h', 'Holgura entre perfiles', null, `<label class="muted" style="flex-direction:row;align-items:center;gap:6px">Holgura (mm) <input type="number" min="0" step="0.5" value="${fmt(estHolg() * 10, 1)}" style="width:70px" onchange="estHolgEdit(this.value)"></label>`)
-    + sec('m', 'Medidas por grupo', e.tramos.length, `<table><thead><tr><th>Grupo</th><th>Col.</th><th>Ancho (cm)</th><th>Alto niveles A→F (cm)</th></tr></thead><tbody>
-    ${e.tramos.map((t, i) => `<tr><td><span style="display:inline-block;width:12px;height:12px;background:${t.color};border:1px solid #555"></span> <input value="${esc(t.nombre)}" style="width:110px" onchange="estTramoEdit(${i},'nombre',this.value)"></td><td>${t.cols}</td>
-      <td><input type="number" value="${t.ancho}" style="width:64px" onchange="estTramoEdit(${i},'ancho',this.value)"></td><td><input value="${t.niveles.join(', ')}" style="width:150px" onchange="estTramoEdit(${i},'niveles',this.value)"></td></tr>`).join('')}</tbody></table>
-    <button class="b2" style="margin-top:6px" onclick="if(confirm('¿Restaurar las medidas de partida?')){S.estanteria.tramos=JSON.parse(JSON.stringify(EST_TRAMOS_DEF));guardar();vEstanteria()}">Restaurar medidas de partida</button>`);
+    + sec('m', 'Grupos de columnas', e.tramos.length, (() => { let c0 = 0; return `<table><thead><tr><th></th><th>Nombre</th><th>Columnas</th><th>Ancho (cm)</th><th>Alto niveles A→F (cm)</th></tr></thead><tbody>
+    ${e.tramos.map((t, i) => { const a = c0 + 1, b = c0 + t.cols; c0 = b; const sg = e.tramos[i + 1];
+      return `<tr><td style="width:36px"><button type="button" title="Color del grupo" style="width:28px;height:22px;background:${t.color};display:inline-block;border:1px solid #888;border-radius:4px;cursor:pointer;padding:0;vertical-align:middle" onclick="colorPick(this,'${t.color}',v=>estTramoEdit(${i},'color',v))"></button></td>
+      <td><input value="${esc(t.nombre)}" style="width:110px" onchange="estTramoEdit(${i},'nombre',this.value)"></td>
+      <td style="white-space:nowrap"><b>${a === b ? a : a + '–' + b}</b> <span class="muted">(${t.cols})</span>
+        <div style="display:flex;gap:4px;margin-top:3px;flex-wrap:wrap">
+        ${t.cols > 1 ? `<select title="Separar este grupo en dos" style="padding:1px 4px;font-size:12px" onchange="if(this.value)estGrupoDividir(${i},+this.value)"><option value="">✂ Dividir…</option>${Array.from({ length: t.cols - 1 }, (_, k) => `<option value="${k + 1}">después de col. ${a + k}</option>`).join('')}</select>` : ''}
+        ${sg && t.cols > 1 ? `<button class="b2" style="padding:1px 6px;font-size:12px" title="Pasar la columna ${b} al grupo siguiente (${esc(sg.nombre)})" onclick="estGrupoMover(${i},-1)">col. ${b} →</button>` : ''}
+        ${sg && sg.cols > 1 ? `<button class="b2" style="padding:1px 6px;font-size:12px" title="Traer la columna ${b + 1} desde ${esc(sg.nombre)}" onclick="estGrupoMover(${i},1)">← col. ${b + 1}</button>` : ''}
+        ${sg ? `<button class="b2" style="padding:1px 6px;font-size:12px" title="Unir con ${esc(sg.nombre)}" onclick="estGrupoUnir(${i})">⊕ Unir con siguiente</button>` : ''}</div></td>
+      <td><input type="number" value="${t.ancho}" style="width:64px" onchange="estTramoEdit(${i},'ancho',this.value)"></td><td><input value="${t.niveles.join(', ')}" style="width:130px" onchange="estTramoEdit(${i},'niveles',this.value)"></td></tr>`; }).join('')}</tbody></table>
+    <button class="b2" style="margin-top:6px" onclick="if(confirm('¿Restaurar los grupos y medidas de partida (Excel)?'))estGrupoAplicar(JSON.parse(JSON.stringify(EST_TRAMOS_DEF)),'Grupos y medidas restaurados')">Restaurar grupos y medidas de partida</button>`; })());
 }
 function estCfFiltrar(){ // buscador del panel: filtra familias y subfamilias y abre las secciones con resultados
   const ws = norm(EST_CFQ).split(/\s+/).filter(Boolean); const x = $('#estCfX'); if (x) x.style.display = EST_CFQ ? '' : 'none';
@@ -1706,7 +1744,7 @@ function estCfFiltrar(){ // buscador del panel: filtra familias y subfamilias y 
 function estConfAbrir(){
   let m = $('#estConf');
   if (!m){ m = document.createElement('div'); m.id = 'estConf'; document.body.appendChild(m);
-    m.style.cssText = 'position:fixed;top:0;right:0;bottom:0;width:min(520px,100%);z-index:95;display:flex'; // panel a la derecha; no se cierra al hacer clic fuera (solo con Listo)
+    m.style.cssText = 'position:fixed;top:0;right:0;bottom:0;width:min(640px,100%);z-index:95;display:flex'; // panel a la derecha; no se cierra al hacer clic fuera (solo con Listo)
     document.addEventListener('keydown', estConfEsc); }
   estConfRender();
 }
