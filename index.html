@@ -68,7 +68,7 @@ nav{display:block;padding:8px 12px 0}
 .subbar button{background:none;border:0;color:#dbe4f3;padding:8px 16px;cursor:pointer;font-size:14px;border-radius:6px 6px 0 0;white-space:nowrap}
 .subbar button.on{background:#eef1f6;color:var(--az);font-weight:bold}
 .colh{cursor:pointer;user-select:none}.colh::before{content:'▾';display:inline-block;width:16px;color:var(--mu);font-size:12px}.card.cerr .colh::before{content:'▸'}.card.cerr>.colhdr,.card.cerr .colh{margin-bottom:0}.card.cerr>*:not(.colhdr){display:none!important}
-#nav{background:var(--az2)}.ptit{display:flex;align-items:baseline;gap:10px;max-width:1300px;margin:0 auto;padding:10px 22px}.pico{font-size:20px}.pnom{font-size:19px;font-weight:700;color:#fff}.pcat{font-size:12px;color:#c7d3ea;text-transform:uppercase;letter-spacing:.06em}
+#nav{background:var(--az2)}.ptit{display:flex;align-items:center;gap:10px;max-width:1300px;margin:0 auto;padding:10px 22px}.pico{font-size:20px}.pnom{font-size:19px;font-weight:700;color:#fff}.pcat{font-size:12px;color:#c7d3ea;text-transform:uppercase;letter-spacing:.06em}.ptabs{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap}.ptabs button{border:0;background:rgba(255,255,255,.1);color:#dbe5f5;font-size:13px;padding:5px 12px;border-radius:7px;cursor:pointer}.ptabs button:hover{background:rgba(255,255,255,.2);color:#fff}.ptabs button.on{background:#fff;color:var(--az);font-weight:600}
 body{padding-bottom:86px}
 #dock{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:90;max-width:calc(100vw - 16px)}
 .dockin{display:flex;align-items:center;gap:2px;background:rgba(31,56,100,.94);backdrop-filter:blur(6px);border-radius:16px;padding:6px 8px;box-shadow:0 8px 28px #0004;overflow-x:auto;overflow-y:visible;scrollbar-width:none}
@@ -414,10 +414,11 @@ function dockRender(){
   if (oculto){ d.className = 'noprint dockmin'; d.innerHTML = `<button class="dk" onclick="dockVer(true)" title="Mostrar barra">▴<span class="dkl">Mostrar barra</span></button>`; return; }
   d.className = 'noprint';
   const adm = USER.rol === 'admin', it = (ic, l, fn, on) => `<button class="dk${on ? ' on' : ''}" onclick="${fn.replace(/"/g, '&quot;')}">${ic}<span class="dkl">${esc(l)}</span></button>`, sep = big => `<span class="dsep${big ? ' big' : ''}"></span>`;
-  const grupos = GRUPOS.filter(g => !g.admin || adm).map(g => g.tabs.filter(([k]) => k !== TAB).map(([k, l]) => it(ICO[k], l, `irA('${k}')`)).join('')).filter(Boolean);
+  const gAct = TAB === 'remu' ? 'admin' : grupoDe(TAB).k;
+  const grupos = GRUPOS.filter(g => g.k !== 'inicio' && (!g.admin || adm)).map(g => it(g.l.split(' ')[0], g.l.replace(/^\S+\s/, ''), `irGrupo('${g.k}')`, g.k === gAct)).join('');
   let h = '';
-  if (TAB === 'inicio'){ h = grupos.join(sep()) + (adm ? sep() + it(ICO.remu, 'Remuneración', "irA('remu')") : ''); }
-  else { const acc = (ACC_PAG[TAB] || []).filter(a => !a[3] || adm); h = (acc.length ? acc.map(a => it(a[0], a[1], a[2])).join('') + sep(true) : '') + it(ICO.inicio, 'Inicio', "irA('inicio')") + sep() + grupos.slice(1).join(sep()); }
+  if (TAB === 'inicio'){ h = grupos + (adm ? it(ICO.remu, 'Remuneración', "irA('remu')") : ''); }
+  else { const acc = (ACC_PAG[TAB] || []).filter(a => !a[3] || adm); h = (acc.length ? acc.map(a => it(a[0], a[1], a[2])).join('') + sep(true) : '') + it(ICO.inicio, 'Inicio', "irA('inicio')") + grupos; }
   d.innerHTML = `<div class="dockin">${h}${sep()}<button class="dk dkhide" onclick="dockVer(false)" title="Ocultar barra">▾<span class="dkl">Ocultar barra</span></button></div>`;
 }
 (function(){
@@ -464,7 +465,7 @@ function render(){
   const g = TAB === 'remu' ? GRUPOS.find(x => x.k === 'admin') : grupoDe(TAB);
   if (TAB !== 'remu'){ try { localStorage.setItem('bodega_tab', TAB); localStorage.setItem('bodega_ult_' + g.k, TAB); } catch(e){} if (location.hash !== '#' + TAB) history.pushState(null, '', '#' + TAB); }
   const nomTab = TAB === 'remu' ? 'Remuneración' : (TABS.find(x => x[0] === TAB) || [, ''])[1];
-  $('#nav').innerHTML = `<div class="ptit"><span class="pico">${ICO[TAB] || ''}</span><span class="pnom">${esc(nomTab)}</span>${g.k !== 'inicio' ? `<span class="pcat">${esc(g.l.replace(/^\S+\s/, ''))}</span>` : ''}</div>`;
+  $('#nav').innerHTML = `<div class="ptit"><span class="pico">${ICO[TAB] || ''}</span><span class="pnom">${esc(nomTab)}</span>${g.k !== 'inicio' ? `<span class="pcat">${esc(g.l.replace(/^\S+\s/, ''))}</span>` : ''}${g.tabs.length > 1 ? `<span class="ptabs">${g.tabs.map(([k, l]) => `<button class="${k === TAB ? 'on' : ''}" onclick="irA('${k}')">${ICO[k]} ${esc(l)}</button>`).join('')}</span>` : ''}</div>`;
   dockRender();
   try { ({ inicio: vInicio, ruta: vRuta, productos: vProductos, guardados: vGuardados, flota: vFlota, sectores: vSectores, mapa: vMapa, personal: vPersonal, turnos: vTurnos, estanteria: vEstanteria, etiquetado: vEtiquetado, admin: vAdmin, remu: vRemu })[TAB](); }
   catch(err){ console.error(err); mostrarFallo(err, true); }
