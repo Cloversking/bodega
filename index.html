@@ -67,11 +67,25 @@ nav{display:block;padding:8px 12px 0}
 @media(max-width:700px){.subbar{flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start}.catbar button{padding:7px 12px}}
 .subbar button{background:none;border:0;color:#dbe4f3;padding:8px 16px;cursor:pointer;font-size:14px;border-radius:6px 6px 0 0;white-space:nowrap}
 .subbar button.on{background:#eef1f6;color:var(--az);font-weight:bold}
-.colh{cursor:pointer;user-select:none}.colh::before{content:'▾';display:inline-block;width:16px;color:var(--mu);font-size:12px}.card.cerr>.colh::before{content:'▸'}.card.cerr>.colh{margin-bottom:0}.card.cerr>*:not(.colh){display:none!important}
+.colh{cursor:pointer;user-select:none}.colh::before{content:'▾';display:inline-block;width:16px;color:var(--mu);font-size:12px}.card.cerr .colh::before{content:'▸'}.card.cerr>.colhdr,.card.cerr .colh{margin-bottom:0}.card.cerr>*:not(.colhdr){display:none!important}
+#nav{background:var(--az2)}.ptit{display:flex;align-items:baseline;gap:10px;max-width:1300px;margin:0 auto;padding:10px 22px}.pico{font-size:20px}.pnom{font-size:19px;font-weight:700;color:#fff}.pcat{font-size:12px;color:#c7d3ea;text-transform:uppercase;letter-spacing:.06em}
+body{padding-bottom:86px}
+#dock{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:90;max-width:calc(100vw - 16px)}
+.dockin{display:flex;align-items:center;gap:2px;background:rgba(31,56,100,.94);backdrop-filter:blur(6px);border-radius:16px;padding:6px 8px;box-shadow:0 8px 28px #0004;overflow-x:auto;overflow-y:visible;scrollbar-width:none}
+.dk{position:relative;border:0;background:none;color:#fff;font-size:20px;width:44px;height:44px;border-radius:11px;cursor:pointer;flex:none;transition:background .15s,transform .15s}
+.dk:hover{background:rgba(255,255,255,.16);transform:translateY(-2px)}.dk.on{background:rgba(255,255,255,.22)}
+.dkl{display:none}#dktip{position:fixed;z-index:95;transform:translate(-50%,-100%);white-space:nowrap;background:#111827;color:#fff;font-size:12px;padding:4px 9px;border-radius:6px;pointer-events:none;opacity:0;transition:opacity .12s}#dktip.ver{opacity:1}
+.dsep{width:1px;height:26px;background:rgba(255,255,255,.22);margin:0 5px;flex:none}.dsep.big{width:2px;height:32px;background:rgba(255,255,255,.55);margin:0 8px}
+.dockmin .dk{background:rgba(31,56,100,.9);box-shadow:0 4px 14px #0004;font-size:16px;width:46px;height:30px;border-radius:15px}
+.sx{position:relative;display:inline-flex;align-items:center;min-width:0}.sxb{position:absolute;right:5px;top:50%;transform:translateY(-50%);border:0;background:#e5e7eb;color:#374151;width:18px;height:18px;border-radius:50%;font-size:10px;line-height:18px;padding:0;cursor:pointer}.sxb:hover{background:#cbd5e1}
+.rtw{border:1px solid var(--bd);border-radius:6px;background:#fff;min-width:260px}.rtbar{display:flex;gap:1px;padding:3px;border-bottom:1px solid #e5e7eb;background:#f8fafc;border-radius:6px 6px 0 0}.rtbar button{border:0;background:none;min-width:26px;height:24px;border-radius:4px;cursor:pointer;font-size:13px;color:#334155}.rtbar button:hover{background:#e2e8f0}.rts{width:1px;background:#e2e8f0;margin:3px 3px}.rted{min-height:58px;padding:6px 8px;outline:none;font-size:14px;line-height:1.35}.rted:focus{box-shadow:inset 0 0 0 2px #bfd3f2;border-radius:0 0 6px 6px}
+.mgrp{display:inline-flex;gap:0}.mgrp .b2{border-radius:0;margin:0 -1px 0 0}.mgrp .b2:first-child{border-radius:6px 0 0 6px}.mgrp .b2:last-child{border-radius:0 6px 6px 0}.b2.on{background:#e3ebf8;border-color:#9fb6dc;color:var(--az)}
+.mtool{background:#fff;border:1px solid #c9d6ec;border-radius:8px;padding:8px;margin-bottom:8px;box-shadow:0 2px 8px #1f386414}.mres{width:100%;border-collapse:collapse}.mres td{padding:4px 3px;border-bottom:1px solid #eef2f7;vertical-align:top;font-size:12px}.mres a{text-decoration:none;font-weight:700}
+.mnum{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#64748b;color:#fff;font:700 12px/1 sans-serif;border:2px solid #fff;box-shadow:0 1px 4px #0005}.mnum.first{background:#16a34a}
 .kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-bottom:14px}
 .kpi{background:#fff;border:1px solid var(--bd);border-radius:10px;padding:12px 14px;cursor:pointer;transition:box-shadow .15s,transform .15s}.kpi:hover{box-shadow:0 3px 10px #0002;transform:translateY(-1px)}
 .kpi .v{font-size:26px;font-weight:700;color:var(--az);line-height:1.1}.kpi .t{font-size:12px;color:var(--mu)}.kpi.alerta .v{color:var(--wa)}.kpi.err .v{color:var(--er)}
-.accs{display:flex;flex-wrap:wrap;gap:8px}.acc{display:flex;align-items:center;gap:8px;background:#f8faff;border:1px solid #d6e0f0;border-radius:8px;padding:9px 14px;cursor:pointer;font-size:14px;color:var(--az)}.acc:hover{background:#eef3fb}.acc span{font-size:18px}
+.accs{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px}.acc{display:flex;align-items:center;gap:10px;height:48px;box-sizing:border-box;background:#f8faff;border:1px solid #d6e0f0;border-radius:10px;padding:0 14px;cursor:pointer;font-size:14px;color:var(--az);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.acc:hover{background:#eef3fb}.acc span{font-size:18px}
 </style>
 <link rel="manifest" href="manifest.json">
 <script src="catalogo.js"></script>
@@ -85,6 +99,7 @@ nav{display:block;padding:8px 12px 0}
 <div id="top"><header><h1>📦 Bodega</h1><span class="who" id="who"></span><span id="filestate" class="who"></span><button class="b2 noprint hide" id="btnOut" onclick="logout()">Salir</button></header>
 <nav id="nav" class="hide"></nav></div>
 <main id="main"></main>
+<div id="dock" class="noprint hide"></div>
 
 <script>
 /* barra superior fija: expone su alto para que los encabezados de tabla se peguen debajo */
@@ -367,6 +382,7 @@ function login(){
 function logout(){ remuBloquear(); USER = null; sessionStorage.removeItem('desp_user'); pantallaInicio(); }
 
 /* ===================== NAVEGACIÓN ===================== */
+const ICO = { inicio: '🏠', ruta: '🚚', guardados: '🗂', flota: '🚛', mapa: '🗺', sectores: '📍', estanteria: '🗄', productos: '🔎', etiquetado: '🏷', personal: '👥', turnos: '📅', admin: '⚙', remu: '💰' };
 const GRUPOS = [
   { k: 'inicio', l: '🏠 Inicio', tabs: [['inicio', 'Inicio']] },
   { k: 'despacho', l: '🚚 Despacho', tabs: [['ruta', 'Armar reparto'], ['guardados', 'Repartos'], ['flota', 'Camiones'], ['mapa', 'Mapa'], ['sectores', 'Sectores']] },
@@ -376,13 +392,62 @@ const GRUPOS = [
 ];
 const TABS = GRUPOS.flatMap(g => g.tabs.map(t => [t[0], t[1], g.k]));
 const grupoDe = t => (GRUPOS.find(g => g.tabs.some(x => x[0] === t)) || GRUPOS[0]);
-function colapsables(){
-  document.querySelectorAll('#main .card > h2:first-child').forEach(h => {
-    if (h.dataset.col) return; h.dataset.col = 1; const card = h.parentElement, key = 'bodega_col_' + TAB + '_' + h.textContent.replace(/\(\d+\)|\d+/g, '').trim().slice(0, 40);
-    h.classList.add('colh'); try { if (localStorage.getItem(key) === '1') card.classList.add('cerr'); } catch(e){}
-    h.addEventListener('click', ev => { if (ev.target.closest('button,a,input,select,label,textarea')) return; card.classList.toggle('cerr'); try { localStorage.setItem(key, card.classList.contains('cerr') ? '1' : ''); } catch(e){} });
+/* ---- Barra inferior: en Inicio muestra todas las páginas; en una página, sus acciones | el resto de las páginas ---- */
+const focoEn = sel => { const el = $(sel); if (el){ const c = el.closest('.card'); if (c) c.classList.remove('cerr'); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => el.focus(), 250); } };
+const clickTxt = t => { const b = [...document.querySelectorAll('#main button')].find(x => x.textContent.includes(t)); if (b){ b.scrollIntoView({ behavior: 'smooth', block: 'center' }); b.click(); } };
+const ACC_PAG = {
+  ruta: [['📄', 'Subir factura', 'elegirArchivos()'], ['💾', 'Guardar reparto', 'guardarRuta()'], ['🖨', 'Imprimir', 'window.print()']],
+  guardados: [['🖨', 'Imprimir', 'window.print()']],
+  flota: [['➕', 'Agregar camión', "clickTxt('Agregar')"]],
+  mapa: [['📍', 'Mi ubicación', 'mapaYo()'], ['📏', 'Medir distancia', 'mapaMedir()'], ['⭕', 'Mostrar u ocultar sectores', 'mapaCirc()'], ['🎯', 'Dirección más cercana', 'mapaHerr("cerca")'], ['🏬', 'Ubicación de la ferretería', 'mapaHerr("suc")'], ['🖨', 'Imprimir', 'window.print()']],
+  sectores: [['➕', 'Agregar sector', "clickTxt('Agregar')"]],
+  estanteria: [['🔎', 'Buscar en el plano', "focoEn('#estHL')"], ['🖨', 'Imprimir', 'estDlgImprimir()'], ['🎨', 'Colores y medidas', 'estConfAbrir()'], ['📂', 'Propuestas', 'epAbrir()']],
+  productos: [['🔎', 'Buscar producto', "focoEn('#q')"], ['⚙', 'Filtros', 'pfAbrir()'], ['📐', 'Calculadora de perfiles', 'ptAbrir()'], ['🔄', 'Actualizar desde CSV', "acceso('csv')", 1]],
+  etiquetado: [['🔎', 'Buscar producto', "focoEn('#etqQ')"], ['✍', 'Texto libre', "etqAdd('')"], ['🖨', 'Imprimir etiquetas', 'etqImprimir()']],
+  personal: [['🔎', 'Buscar trabajador', "focoEn('#pBus')"], ['➕', 'Agregar trabajador', "clickTxt('Agregar trabajador')"], ['🖨', 'Imprimir', 'window.print()']],
+  turnos: [['📆', 'Semana actual', 'SEMANA=iso(lunesDe(new Date()));vTurnos()'], ['🖨', 'Imprimir', "clickTxt('Imprimir')"]],
+  admin: [['➕', 'Nuevo usuario', "focoEn('#nU')"]]
+};
+function dockRender(){
+  const d = $('#dock'); if (!d) return; if (!USER){ d.classList.add('hide'); return; } d.classList.remove('hide');
+  let oculto = false; try { oculto = localStorage.getItem('bodega_dock') === '0'; } catch(e){}
+  if (oculto){ d.className = 'noprint dockmin'; d.innerHTML = `<button class="dk" onclick="dockVer(true)" title="Mostrar barra">▴<span class="dkl">Mostrar barra</span></button>`; return; }
+  d.className = 'noprint';
+  const adm = USER.rol === 'admin', it = (ic, l, fn, on) => `<button class="dk${on ? ' on' : ''}" onclick="${fn.replace(/"/g, '&quot;')}">${ic}<span class="dkl">${esc(l)}</span></button>`, sep = big => `<span class="dsep${big ? ' big' : ''}"></span>`;
+  const grupos = GRUPOS.filter(g => !g.admin || adm).map(g => g.tabs.filter(([k]) => k !== TAB).map(([k, l]) => it(ICO[k], l, `irA('${k}')`)).join('')).filter(Boolean);
+  let h = '';
+  if (TAB === 'inicio'){ h = grupos.join(sep()) + (adm ? sep() + it(ICO.remu, 'Remuneración', "irA('remu')") : ''); }
+  else { const acc = (ACC_PAG[TAB] || []).filter(a => !a[3] || adm); h = (acc.length ? acc.map(a => it(a[0], a[1], a[2])).join('') + sep(true) : '') + it(ICO.inicio, 'Inicio', "irA('inicio')") + sep() + grupos.slice(1).join(sep()); }
+  d.innerHTML = `<div class="dockin">${h}${sep()}<button class="dk dkhide" onclick="dockVer(false)" title="Ocultar barra">▾<span class="dkl">Ocultar barra</span></button></div>`;
+}
+(function(){
+  const tip = () => document.getElementById('dktip') || document.body.appendChild(Object.assign(document.createElement('div'), { id: 'dktip' }));
+  document.addEventListener('mouseover', e => { const b = e.target.closest && e.target.closest('#dock .dk'); const t = tip(); if (!b){ t.classList.remove('ver'); return; } const r = b.getBoundingClientRect(); t.textContent = b.querySelector('.dkl').textContent; t.style.left = (r.left + r.width / 2) + 'px'; t.style.top = (r.top - 8) + 'px'; t.classList.add('ver'); });
+  document.addEventListener('click', e => { if (e.target.closest && e.target.closest('#dock')) tip().classList.remove('ver'); }, true);
+})();
+function dockVer(v){ try { localStorage.setItem('bodega_dock', v ? '1' : '0'); } catch(e){} dockRender(); }
+function limpiables(){
+  document.querySelectorAll('input:not([type]), input[type=text], input[type=search]').forEach(el => {
+    if (el.dataset.lx || !(/buscar|🔍|resaltar|palabras|ej:/i.test(el.placeholder || '') || /^(q|\w*Q|\w*Bus|\w*HL)$/.test(el.id)) || el.closest('.sx')) return; el.dataset.lx = 1;
+        const w = document.createElement('span'); w.className = 'sx'; const cs = getComputedStyle(el);
+    w.style.flex = el.style.flex || cs.flex; if (el.style.width) w.style.width = el.style.width; if (el.style.minWidth) w.style.minWidth = el.style.minWidth;
+    el.parentNode.insertBefore(w, el); w.appendChild(el); el.style.width = '100%'; el.style.minWidth = '0'; el.style.paddingRight = '26px';
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'sxb noprint'; b.title = 'Limpiar'; b.textContent = '✕'; w.appendChild(b);
+    const ver = () => { b.style.display = el.value ? '' : 'none'; }; ver(); el.addEventListener('input', ver);
+    b.addEventListener('click', () => { el.value = ''; ['input', 'change', 'keyup'].forEach(t => el.dispatchEvent(new Event(t, { bubbles: true }))); ver(); el.focus(); });
   });
 }
+function colapsables(){
+  document.querySelectorAll('#main .card').forEach(card => {
+    const f = card.firstElementChild; if (!f || card.dataset.col) return;
+    const h = f.tagName === 'H2' ? f : (f.querySelector(':scope > h2') || (f.tagName === 'DETAILS' ? null : null)); if (!h) return;
+    card.dataset.col = 1; const key = 'bodega_col_' + TAB + '_' + h.textContent.replace(/\(\d+\)|\d+/g, '').trim().slice(0, 40);
+    f.classList.add('colhdr'); h.classList.add('colh'); try { if (localStorage.getItem(key) === '1') card.classList.add('cerr'); } catch(e){}
+    f.addEventListener('click', ev => { if (ev.target.closest('button,a,input,select,label,textarea') || (f !== h && !ev.target.closest('h2'))) return; card.classList.toggle('cerr'); try { localStorage.setItem(key, card.classList.contains('cerr') ? '1' : ''); } catch(e){} });
+  });
+  limpiables();
+}
+(() => { let t2 = null; if (window.MutationObserver) new MutationObserver(() => { clearTimeout(t2); t2 = setTimeout(limpiables, 60); }).observe(document.body, { childList: true, subtree: true }); })();
 (() => { let t = null; const m = document.getElementById('main'); if (m && window.MutationObserver) new MutationObserver(() => { clearTimeout(t); t = setTimeout(colapsables, 30); }).observe(m, { childList: true, subtree: true }); })();
 function irA(t){ if (t === TAB){ window.scrollTo(0, 0); return; } TAB = t; render(); window.scrollTo(0, 0); }
 function irGrupo(k){ const g = GRUPOS.find(x => x.k === k); let t = localStorage.getItem('bodega_ult_' + k); if (!g.tabs.some(x => x[0] === t)) t = g.tabs[0][0]; irA(t); }
@@ -398,8 +463,9 @@ function render(){
   if (TAB !== 'remu') remuBloquear();
   const g = TAB === 'remu' ? GRUPOS.find(x => x.k === 'admin') : grupoDe(TAB);
   if (TAB !== 'remu'){ try { localStorage.setItem('bodega_tab', TAB); localStorage.setItem('bodega_ult_' + g.k, TAB); } catch(e){} if (location.hash !== '#' + TAB) history.pushState(null, '', '#' + TAB); }
-  $('#nav').innerHTML = `<div class="catbar">${GRUPOS.filter(x => !x.admin || USER.rol === 'admin').map(x => `<button class="${x.k === g.k ? 'on' : ''}" onclick="irGrupo('${x.k}')">${x.l}</button>`).join('')}</div>
-    ${g.tabs.length > 1 ? `<div class="subbar">${g.tabs.map(([k, l]) => `<button class="${k === TAB ? 'on' : ''}" onclick="irA('${k}')">${l}</button>`).join('')}</div>` : '<div style="height:8px"></div>'}`;
+  const nomTab = TAB === 'remu' ? 'Remuneración' : (TABS.find(x => x[0] === TAB) || [, ''])[1];
+  $('#nav').innerHTML = `<div class="ptit"><span class="pico">${ICO[TAB] || ''}</span><span class="pnom">${esc(nomTab)}</span>${g.k !== 'inicio' ? `<span class="pcat">${esc(g.l.replace(/^\S+\s/, ''))}</span>` : ''}</div>`;
+  dockRender();
   try { ({ inicio: vInicio, ruta: vRuta, productos: vProductos, guardados: vGuardados, flota: vFlota, sectores: vSectores, mapa: vMapa, personal: vPersonal, turnos: vTurnos, estanteria: vEstanteria, etiquetado: vEtiquetado, admin: vAdmin, remu: vRemu })[TAB](); }
   catch(err){ console.error(err); mostrarFallo(err, true); }
 }
@@ -421,7 +487,7 @@ function vInicio(){
   const acc = (S.config.accesos && S.config.accesos.length ? S.config.accesos : ['ruta', 'guardados', 'estanteria', 'productos', 'imp_est', 'resp']).filter(k => ACCESOS.some(a => a[0] === k && (!a[3] || adm)));
   const kpi = (v, t, go, cls) => `<div class="kpi ${cls || ''}" onclick="${go}"><div class="v">${v}</div><div class="t">${t}</div></div>`;
   const hoyTxt = new Date().toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' });
-  $('#main').innerHTML = `<div style="display:flex;align-items:baseline;gap:10px;margin:2px 2px 12px"><h2 style="margin:0;color:var(--az);font-size:20px">Hola, ${esc(USER.nombre.split(' ')[0])}</h2><span class="muted">${esc(hoyTxt)}</span></div>
+  $('#main').innerHTML = `<div style="display:flex;align-items:baseline;gap:10px;margin:2px 2px 12px"><h2 style="margin:0;color:var(--az);font-size:20px">Hola, ${esc(USER.nombre.split(' ')[0])}</h2><span class="muted" style="flex:1">${esc(hoyTxt)}</span>${adm ? `<button class="b2" onclick="irA('remu')" title="Remuneración (protegida con PIN)">💰 Remuneración</button>` : ''}</div>
   <div class="kpis">
     ${kpi(porSalir.length, 'Repartos por salir', "irA('guardados')", porSalir.length ? 'alerta' : '')}
     ${kpi(enRuta.length, 'Repartos en ruta', "irA('guardados')")}
@@ -1831,7 +1897,7 @@ function estConfAbrir(){
 function estConfRender(){ const m = $('#estConf'); if (!m) return; const sc = m.firstChild ? m.firstChild.scrollTop : 0;
   m.innerHTML = `<div style="background:#fff;width:100%;height:100%;overflow:auto;box-shadow:-6px 0 24px #0003;border-left:1px solid #d1d5db"><div style="position:sticky;top:0;background:#fff;z-index:1;padding:10px 12px;border-bottom:1px solid #e5e7eb">
     <div class="row" style="align-items:center;gap:8px;margin:0"><h3 style="flex:1;margin:0;color:var(--az)">⚙ Colores y medidas</h3><span id="estCfOk" style="color:#166534;font-size:12px;opacity:0;transition:opacity .3s"></span><button class="b" onclick="estConfCerrar()">✓ Listo</button></div>
-    <div style="display:flex;align-items:center;gap:6px;margin-top:8px"><input id="estCfQ" placeholder="🔍 Buscar familia o subfamilia" value="${esc(EST_CFQ)}" style="flex:1" oninput="EST_CFQ=this.value;estCfFiltrar()" onkeydown="if(event.key==='Escape'&&EST_CFQ){EST_CFQ='';this.value='';estCfFiltrar();event.stopPropagation()}"><button class="bx" id="estCfX" title="Limpiar" style="display:none" onclick="EST_CFQ='';$('#estCfQ').value='';estCfFiltrar()">✕</button></div></div>
+    <div style="display:flex;align-items:center;gap:6px;margin-top:8px"><input id="estCfQ" placeholder="🔍 Buscar familia o subfamilia" value="${esc(EST_CFQ)}" style="flex:1" oninput="EST_CFQ=this.value;estCfFiltrar()" onkeydown="if(event.key==='Escape'&&EST_CFQ){EST_CFQ='';this.value='';estCfFiltrar();event.stopPropagation()}"></div></div>
     <div style="padding:10px 12px">${estConfHTML()}</div></div>`;
   m.firstChild.scrollTop = sc; estCfFiltrar(); }
 function estConfEsc(ev){} // el panel solo se cierra con "Listo" (no con Escape ni clic fuera)
@@ -1957,6 +2023,29 @@ function etqCrop(src, x, y, w, h, c){
 const etqEsc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 const etqFS = (pt, w) => ETQ.fuente === 'term' ? `font-size:${(pt * 1.04).toFixed(2)}pt;font-weight:400;-webkit-text-stroke:${w >= 700 ? (pt * .0125 * 25.4 / 25.4).toFixed(3) : 0}mm #000;` : `font-size:${pt}pt;font-weight:${w};`;
+/* texto enriquecido de la etiqueta: solo negrita, cursiva, subrayado, tamaño y color; it.h vale mientras it.d no cambie por otro lado */
+function etqSan(html){
+  const t = document.createElement('template'); t.innerHTML = String(html || ''); const FS = { 1: '.6em', 2: '.8em', 3: '1em', 4: '1.2em', 5: '1.45em', 6: '1.8em', 7: '2.2em' };
+  const out = nd => [...nd.childNodes].map(c => {
+    if (c.nodeType === 3) return etqEsc(c.textContent);
+    if (c.nodeType !== 1) return ''; const tg = c.tagName.toLowerCase(), in_ = out(c);
+    if (tg === 'br') return '<br>';
+    if (tg === 'div' || tg === 'p') return '<br>' + in_;
+    if (['b', 'strong'].includes(tg)) return `<b>${in_}</b>`; if (['i', 'em'].includes(tg)) return `<i>${in_}</i>`; if (tg === 'u') return `<u>${in_}</u>`;
+    let st = ''; const fs = tg === 'font' ? FS[c.getAttribute('size')] : (c.style.fontSize || ''), col = tg === 'font' ? c.getAttribute('color') : c.style.color;
+    if (/^[\d.]+(em|%|px|pt)$|^(x*-?small|medium|x*-?large)$/.test(fs || '')) st += 'font-size:' + fs + ';';
+    if (col && /^(#[0-9a-f]{3,8}|rgb\([\d,\s]+\)|[a-z]+)$/i.test(col)) st += 'color:' + col + ';';
+    if (c.style && /bold|[6-9]00/.test(c.style.fontWeight)) return `<b>${st ? `<span style="${st}">${in_}</span>` : in_}</b>`;
+    return st ? `<span style="${st}">${in_}</span>` : in_;
+  }).join('');
+  return out(t.content).replace(/^<br>/, '');
+}
+function etqLineas(it){
+  if (it.h && it.hd === it.d) return etqSan(it.h).split('<br>').map(h => ({ h }));
+  return String(it.d || '').split('\n').map(s => ({ t: s.replace(/\s+$/, '') }));
+}
+function etqRT(k, el){ const i = ETQ.it[k]; i.h = el.innerHTML; i.d = el.innerText.replace(/\n$/, ''); i.hd = i.d; etqPrev(); }
+function etqCmd(ev, c, v){ ev.preventDefault(); document.execCommand('styleWithCSS', false, false); document.execCommand(c, false, v); const ed = ev.target.closest('.rtw').querySelector('.rted'); ed.dispatchEvent(new Event('input')); }
 const etqTI = t => ETQ.fuente === 'term' ? `<span style="display:block;width:121.95%;margin-left:-10.976%;text-align:center;white-space:pre;transform:scaleX(.82);transform-origin:center">${t}</span>` : t;
 function etqLabel(mk, it, ancho){
   if (ETQ_MOD[mk] && ETQ_MOD[mk].term) return etqTerm(it);
@@ -1977,11 +2066,11 @@ function etqLabel(mk, it, ancho){
   }
   if (m.logo) h += m.logoD || mk === 'dvp' ? etqCrop(ETQ_IMG.logoD, m.logo[0], m.logo[1], m.logo[2], m.logo[3], { l: .09538, t: .11145, r: .09435, b: .03012 }) : etqCrop(ETQ_IMG.logo, m.logo[0], m.logo[1], m.logo[2], m.logo[3], ETQ_CROP);
   if (m.logoD) h += `<img src="${ETQ_IMG.dvp}" style="position:absolute;left:${m.logoD[0]}mm;top:${m.logoD[1]}mm;width:${m.logoD[2]}mm;height:${m.logoD[3]}mm">`;
-  const lines = String(it.d || '').split('\n').map(s => s.replace(/\s+$/, '')), cs = m.code, ns = m.name, cb = cs.b ? 700 : 400;
+  const lines = etqLineas(it), cs = m.code, ns = m.name, cb = cs.b ? 700 : 400;
   const cod = String(it.c || '').trim(), ctxt = !cod ? '' : cs.pre ? (cs.pre + cod).replace(/\s+$/, '') : cod;
   h += `<div style="position:absolute;left:${bx + 2.54}mm;top:${by + 1.27}mm;width:${bw - 5.08}mm;height:${bh - 2.54}mm;display:flex;flex-direction:column;justify-content:center;text-align:center${ETQ.fuente === 'term' ? ';font-family:' + ETQ_TF : ''}">`
     + `<div style="${etqFS(cs.pt, cb)}line-height:${(cs.lh * m.nat).toFixed(4)};margin-bottom:${cs.after}pt;min-height:${(cs.lh * m.nat).toFixed(3)}em;white-space:pre-wrap">${etqTI(etqEsc(ctxt))}</div>`
-    + lines.map(s => `<div style="${etqFS(ns.pt, 700)}line-height:${(ns.lh * m.nat).toFixed(4)};${ns.ml ? `margin-left:${ns.ml}mm;margin-right:${ns.mr}mm;` : ''}min-height:${(ns.lh * m.nat).toFixed(3)}em">${etqTI(etqEsc(s))}</div>`).join('') + `</div></div>`;
+    + lines.map(s => `<div style="${etqFS(ns.pt, 700)}line-height:${(ns.lh * m.nat).toFixed(4)};${ns.ml ? `margin-left:${ns.ml}mm;margin-right:${ns.mr}mm;` : ''}min-height:${(ns.lh * m.nat).toFixed(3)}em">${etqTI(s.h != null ? s.h : etqEsc(s.t))}</div>`).join('') + `</div></div>`;
   return h;
 }
 
@@ -2103,7 +2192,7 @@ function vEtiquetado(){
   const prod = `<label style="flex-direction:row;align-items:center;gap:6px;color:inherit"><input type="checkbox" ${ETQ.multi ? 'checked' : ''} onchange="etqMulti(this.checked)"> Imprimir más de un producto</label>
     <div class="row" style="align-items:center;margin-top:6px"><input id="etqQ" placeholder="🔍 Buscar producto: código o palabras" value="${etqEsc(ETQ.q)}" style="flex:1" oninput="ETQ.q=this.value;etqBuscar()"><button class="b2" id="etqLibreB" onclick="etqAdd('')">＋ Texto libre</button></div>
     <div id="etqNota" class="muted" style="margin-top:4px"></div><div id="etqRes" style="max-height:230px;overflow:auto;margin-top:6px"></div><div id="etqLista" style="margin-top:8px"></div>`;
-  $('#main').innerHTML = `<div class="card"><h2 style="margin:0">🏷 Etiquetado</h2></div>${etqPanel('mod', 'Modelo de etiqueta', mod)}${etqPanel('hoja', 'Hoja de impresión', hoja)}${etqPanel('prod', 'Productos a etiquetar', prod)}<div id="etqResumen"></div><div id="etqPrev"></div>`;
+  $('#main').innerHTML = `${etqPanel('mod', 'Modelo de etiqueta', mod)}${etqPanel('hoja', 'Hoja de impresión', hoja)}${etqPanel('prod', 'Productos a etiquetar', prod)}<div id="etqResumen"></div><div id="etqPrev"></div>`;
   etqBuscar(); etqLista(); etqPrev();
 }
 document.addEventListener('click', e => { const l = document.getElementById('etqCbL'); if (l && l.style.display === 'block' && !e.target.closest('.etqcb')) l.style.display = 'none'; });
@@ -2162,9 +2251,9 @@ function etqQuitarFoto(k){
 function etqLista(){
   const box = $('#etqLista'); if (!box) return; const g = etqGeo(ETQ.m, ETQ.w), cap = Math.max(1, etqCap(ETQ.m, etqOrient()).n);
   etqBloqUI();
-  box.innerHTML = ETQ.it.length ? `<table><thead><tr><th>Código</th><th>Texto de la etiqueta (cada renglón = una línea)</th>${g.foto ? '<th>Foto</th>' : ''}<th>Cantidad</th><th></th></tr></thead><tbody>${ETQ.it.map((i, k) => `<tr>
+  box.innerHTML = ETQ.it.length ? `<table><thead><tr><th>Código</th><th>Texto de la etiqueta</th>${g.foto ? '<th>Foto</th>' : ''}<th>Cantidad</th><th></th></tr></thead><tbody>${ETQ.it.map((i, k) => `<tr>
     <td><input value="${etqEsc(i.c)}" style="width:150px" oninput="ETQ.it[${k}].c=this.value;etqPrev()" onchange="etqCodigo(${k},this.value)"></td>
-    <td><textarea rows="3" style="width:100%;min-width:260px" oninput="ETQ.it[${k}].d=this.value;etqPrev()">${etqEsc(i.d)}</textarea></td>
+    <td><div class="rtw"><div class="rtbar"><button title="Negrita" onmousedown="etqCmd(event,'bold')"><b>B</b></button><button title="Cursiva" onmousedown="etqCmd(event,'italic')"><i>I</i></button><button title="Subrayado" onmousedown="etqCmd(event,'underline')"><u>U</u></button><span class="rts"></span><button title="Más chico" onmousedown="etqCmd(event,'fontSize','2')">A<small>−</small></button><button title="Normal" onmousedown="etqCmd(event,'fontSize','3')">A</button><button title="Más grande" onmousedown="etqCmd(event,'fontSize','5')">A<small>+</small></button><span class="rts"></span><button title="Rojo" onmousedown="etqCmd(event,'foreColor','#c00000')"><span style="color:#c00000">●</span></button><button title="Negro" onmousedown="etqCmd(event,'foreColor','#000000')">●</button><span class="rts"></span><button title="Quitar formato" onmousedown="etqCmd(event,'removeFormat')">⌫</button></div><div class="rted" contenteditable="true" oninput="etqRT(${k},this)">${i.h && i.hd === i.d ? etqSan(i.h) : etqEsc(i.d).replace(/\n/g, '<br>')}</div></div></td>
     ${g.foto ? `<td style="white-space:nowrap">${i.foto ? `<img src="${i.foto.src}" style="width:60px;border-radius:5px;vertical-align:middle"> <button class="b2" title="Quitar foto" onclick="etqQuitarFoto(${k})">✕</button>` : '<span class="muted">sin foto</span>'}<br><label class="b2" style="display:inline-block;cursor:pointer;margin-top:3px">📷 Subir<input type="file" accept="image/*" style="display:none" onchange="etqFoto(${k},this)"></label></td>` : ''}
     <td style="white-space:nowrap"><input type="number" min="1" step="1" value="${i.q}" style="width:70px" oninput="ETQ.it[${k}].q=Math.max(0,Math.round(+this.value||0));etqPrev()"><br><button class="b2" style="margin-top:3px" onclick="ETQ.it[${k}].q=${cap};etqLista();etqPrev()">Llenar hoja (${cap})</button></td>
     <td><button class="bx" onclick="ETQ.it.splice(${k},1);etqLista();etqPrev()">✕</button></td></tr>`).join('')}</tbody></table>` : '<p class="muted">Sin productos.</p>';
@@ -2303,7 +2392,7 @@ function aplicarPosiciones(P){
 function importarMapaLocal(silencioso){ try { const P = JSON.parse(localStorage.getItem('mapa_sectores_olmue_v1') || 'null'); if (P){ const n = aplicarPosiciones(P); if (n && !silencioso) toast(n + ' posiciones traídas del mapa anterior'); return n; } } catch(e){} return 0; }
 async function importarPosiciones(f){ if (!f) return; try { const n = aplicarPosiciones(JSON.parse(await f.text())); guardar(); toast(n + ' posiciones cargadas'); vMapa(); } catch(e){ toast('Archivo no válido'); } }
 
-let MAPA = null, MEDIT = false, MSEL = null, MCAPA = null;
+let MAPA = null, MEDIT = false, MSEL = null, MCAPA = null, MHER = null, MYO = null, MMED = null, MXCAPA = null, MCER = null;
 const R_DEF = 700;
 const BUSQ = { 'Olmué Centro':['Olmué'], 'Limache Centro':['Limache'], 'Granizo':['El Granizo, Olmué','Granizo'], 'Cajón Grande':['Cajón Grande, Olmué'], 'La Campana':['Parque Nacional La Campana','La Campana, Olmué'] };
 function cargarCSS(href){ if (document.querySelector(`link[href="${href}"]`)) return; const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); }
@@ -2328,8 +2417,9 @@ function vMapa(){
     <div class="row noprint" style="margin-bottom:6px">
       <button class="b" onclick="ubicarSectores()">📍 Ubicar rutas${sin ? ' (' + sin + ' sin ubicar)' : ''}</button>
       <button class="b2" style="${MEDIT ? 'background:#ffd966' : ''}" onclick="MEDIT=!MEDIT;MSEL=null;vMapa()">✏ Ajustar a mano</button>
+      <span class="mgrp"><button class="b2" onclick="mapaYo()" title="Centrar en mi ubicación">📍 Yo</button><button class="b2${MMED ? ' on' : ''}" onclick="mapaMedir()" title="Medir distancias haciendo clic en el mapa">📏 Medir</button><button class="b2${S.mapa.ocultarCirc ? '' : ' on'}" onclick="mapaCirc()" title="Mostrar u ocultar los círculos de los sectores">⭕ Sectores</button><button class="b2${MHER === 'cerca' ? ' on' : ''}" onclick="mapaHerr('cerca')" title="Compara direcciones y ordena por cercanía a la ferretería">🎯 Más cercana</button><button class="b2${MHER === 'suc' ? ' on' : ''}" onclick="mapaHerr('suc')" title="Ubicación de la ferretería">🏬 Ferretería</button></span>
       <button class="b2" onclick="window.print()">🖨 Imprimir</button>
-      <span id="mmsg" class="muted"></span></div>
+      <span id="mmed" style="font-size:13px"></span><span id="mmsg" class="muted"></span></div>
     <div class="titulo-print">Rutas de despacho — Ferretería Higuerillas, sucursal Olmué</div>
     <div style="display:flex;gap:8px">
       <div id="mpanel" class="noprint" style="width:270px;max-height:72vh;overflow:auto;font-size:12px"></div>
@@ -2348,8 +2438,9 @@ function iniciarMapa(){
   const ley = L.control({ position: 'bottomleft' });
   ley.onAdd = () => { const d = L.DomUtil.create('div', 'leyenda'); d.innerHTML = '<b>Rutas de despacho</b><br>' + rutasLista().map(r => `<span class="sw" style="background:${colorRuta(r)}"></span> <b>${esc(r)}</b>: ${S.sectors.filter(s => (s.ruta || 'Sin ruta') === r).map(s => esc(s.nombre)).join(', ')}`).join('<br>'); return d; };
   ley.addTo(MAPA);
-  MAPA.on('click', e => { if (!MEDIT || !MSEL) return; const ant = circRuta(MSEL) || {}; S.mapa.rutas[MSEL] = { lat: e.latlng.lat, lng: e.latlng.lng, r: ant.r || 1500 }; MSEL = null; guardar(); dibujarMapa(); });
-  dibujarMapa(); encuadrarMapa();
+  MXCAPA = L.layerGroup().addTo(MAPA);
+  MAPA.on('click', e => { if (MMED){ MMED.push(e.latlng); mapaMedDibujar(); return; } if (!MEDIT || !MSEL){ if (!MEDIT) mapaPopDist(e.latlng); return; } const ant = circRuta(MSEL) || {}; S.mapa.rutas[MSEL] = { lat: e.latlng.lat, lng: e.latlng.lng, r: ant.r || 1500 }; MSEL = null; guardar(); dibujarMapa(); });
+  dibujarMapa(); encuadrarMapa(); mapaExtras();
   if (S.sectors.some(s => !S.mapa.pos[s.id])) ubicarSectores();
 }
 function dibujarMapa(){
@@ -2362,7 +2453,7 @@ function dibujarMapa(){
   }
   const fact = {}; S.despachos.filter(d => d.estado === 'En espera' || d.estado === 'En ruta').forEach(d => { const s = S.sectors.find(x => x.id === d.sector); if (s){ const r = s.ruta || 'Sin ruta'; fact[r] = (fact[r] || 0) + 1; } });
   rutasLista().forEach(r => {
-    const p = circRuta(r); if (!p) return; const col = colorRuta(r);
+    const p = circRuta(r); if (!p || (S.mapa.ocultarCirc && !MEDIT)) return; const col = colorRuta(r);
     const c = L.circle([p.lat, p.lng], { radius: p.r, color: col, weight: 3, fillColor: col, fillOpacity: .18 }).addTo(MCAPA);
     c.bindTooltip(esc(r) + (fact[r] ? ` · ${fact[r]} fact.` : ''), { permanent: true, direction: 'center', className: 'lbl lblR' });
     if (MEDIT){
@@ -2375,7 +2466,7 @@ function dibujarMapa(){
 }
 function panelMapa(){
   const el = $('#mpanel'); if (!el) return;
-  el.innerHTML = `<p style="margin:0 0 6px">${MEDIT ? '<b>Ajuste:</b> arrastra el cuadro blanco del centro de cada ruta, o pulsa "Colocar" y haz clic en el mapa. El número es el radio en metros.' : 'Un círculo por ruta. Corrige ubicación y tamaño con <b>✏ Ajustar a mano</b>.'}</p>` +
+  el.innerHTML = mapaHerrHTML() + `<p style="margin:0 0 6px">${MEDIT ? '<b>Ajuste:</b> arrastra el cuadro blanco del centro de cada ruta, o pulsa "Colocar" y haz clic en el mapa. El número es el radio en metros.' : 'Un círculo por ruta. Corrige ubicación y tamaño con <b>✏ Ajustar a mano</b>.'}</p>` +
   rutasLista().map(r => { const p = circRuta(r);
     return `<div style="background:#fff;border:1px solid #ddd;border-radius:6px;padding:6px;margin-bottom:6px;${MSEL === r ? 'background:#ffd96688' : ''}">
       <div style="display:flex;gap:4px;align-items:center"><b style="flex:1;cursor:pointer" onclick="enfocarRuta('${esc(r)}')"><span class="sw" style="background:${colorRuta(r)}"></span> ${esc(r)}</b>
@@ -2385,6 +2476,109 @@ function panelMapa(){
 }
 function enfocarRuta(r){ const p = circRuta(r); if (p) MAPA.setView([p.lat, p.lng], 14); if (MEDIT){ MSEL = r; panelMapa(); } }
 function radioRuta(r, v){ const p = circRuta(r); if (!p) return; S.mapa.rutas[r] = { lat: p.lat, lng: p.lng, r: Math.max(200, n(v, 1500)) }; guardar(); dibujarMapa(); }
+/* ---- herramientas del mapa: mi ubicación, medir, círculos, dirección más cercana, ubicación de la ferretería ---- */
+const fmtKm = m => m < 1000 ? Math.round(m) + ' m' : (m / 1000).toFixed(m < 10000 ? 2 : 1).replace('.', ',') + ' km';
+const fmtMin = s => s < 3600 ? Math.max(1, Math.round(s / 60)) + ' min' : Math.floor(s / 3600) + ' h ' + Math.round(s % 3600 / 60) + ' min';
+const gmLL = p => p.lat.toFixed(6) + ',' + p.lng.toFixed(6);
+const gmDir = (o, d, w) => 'https://www.google.com/maps/dir/?api=1' + (o ? '&origin=' + gmLL(o) : '') + '&destination=' + gmLL(d) + (w && w.length ? '&waypoints=' + w.map(gmLL).join('%7C') : '') + '&travelmode=driving';
+function mapaMsg(t){ const m = $('#mmsg'); if (m) m.innerHTML = t; }
+function mapaMedMsg(t){ const m = $('#mmed'); if (m) m.innerHTML = t; }
+function mapaYo(){
+  if (!navigator.geolocation){ mapaMsg('<span class="err">Este navegador no entrega la ubicación.</span>'); return; }
+  mapaMsg('Buscando tu ubicación…');
+  navigator.geolocation.getCurrentPosition(g => { MYO = { lat: g.coords.latitude, lng: g.coords.longitude, acc: g.coords.accuracy }; mapaMsg(''); mapaExtras(); if (MAPA) MAPA.setView([MYO.lat, MYO.lng], Math.max(MAPA.getZoom(), 15)); },
+    e => mapaMsg('<span class="err">' + (e.code === 1 ? 'Permiso de ubicación denegado.' : 'No se pudo obtener la ubicación.') + '</span>'), { enableHighAccuracy: true, timeout: 12000 });
+}
+function mapaMedir(){
+  MMED = MMED ? null : (MYO ? [L.latLng(MYO.lat, MYO.lng)] : []);
+  mapaMedMsg(MMED ? 'Haz clic en el mapa para agregar puntos' + (MYO ? ' (parte desde tu ubicación)' : '') + '. Vuelve a pulsar 📏 para terminar.' : '');
+  document.querySelectorAll('.mgrp button')[1].classList.toggle('on', !!MMED); if ($('#mapa')) $('#mapa').style.cursor = MMED ? 'crosshair' : ''; mapaExtras();
+}
+function mapaMedDibujar(){ mapaExtras(); }
+function mapaCirc(){ S.mapa.ocultarCirc = !S.mapa.ocultarCirc; guardar(); document.querySelectorAll('.mgrp button')[2].classList.toggle('on', !S.mapa.ocultarCirc); dibujarMapa(); }
+function mapaHerr(k){ MHER = MHER === k ? null : k; document.querySelectorAll('.mgrp button')[3].classList.toggle('on', MHER === 'cerca'); document.querySelectorAll('.mgrp button')[4].classList.toggle('on', MHER === 'suc'); panelMapa(); const el = $('#mpanel'); if (el) el.scrollTop = 0; const f = $('#mhIn'); if (f) f.focus(); }
+function mapaPopDist(ll){
+  const pt = { lat: ll.lat, lng: ll.lng }, suc = S.mapa.sucursal; let h = `<div style="font-size:12px;min-width:170px">`;
+  if (suc) h += `🏬 Ferretería: <b>${fmtKm(distM(suc, pt))}</b> en línea recta<br>`;
+  if (MYO) h += `📍 Desde ti: <b>${fmtKm(distM(MYO, pt))}</b><br>`;
+  if (!suc && !MYO) h += `<span class="muted">Ubica la ferretería (🏬) o tu posición (📍) para ver distancias.</span><br>`;
+  h += `<a href="${gmDir(suc || MYO, pt)}" target="_blank" rel="noopener">Cómo llegar ↗</a> · <span class="muted">${gmLL(pt)}</span></div>`;
+  L.popup().setLatLng(ll).setContent(h).openOn(MAPA);
+}
+function mapaExtras(){
+  if (!MAPA || !MXCAPA) return; MXCAPA.clearLayers();
+  if (MYO){
+    L.circle([MYO.lat, MYO.lng], { radius: Math.min(MYO.acc || 0, 300), color: '#2563eb', weight: 1, fillOpacity: .1 }).addTo(MXCAPA);
+    L.circleMarker([MYO.lat, MYO.lng], { radius: 7, color: '#fff', weight: 3, fillColor: '#2563eb', fillOpacity: 1 }).addTo(MXCAPA).bindTooltip('Tú' + (S.mapa.sucursal ? ' · ' + fmtKm(distM(MYO, S.mapa.sucursal)) + ' de la ferretería' : ''), { direction: 'top', offset: [0, -6] });
+  }
+  if (MMED && MMED.length){
+    L.polyline(MMED, { color: '#111827', weight: 3, dashArray: '6 6' }).addTo(MXCAPA); let tot = 0;
+    MMED.forEach((p, i) => { if (i) tot += distM(MMED[i - 1], p); L.circleMarker(p, { radius: 5, color: '#111827', weight: 2, fillColor: '#fff', fillOpacity: 1 }).addTo(MXCAPA).bindTooltip(i ? fmtKm(tot) : 'inicio', { permanent: i === MMED.length - 1 || i === 0, direction: 'right', className: 'lbl' }); });
+    if (MMED.length > 1) mapaMedMsg(`📏 <b>${fmtKm(tot)}</b> en línea recta · ${MMED.length - 1} tramo(s) <button class="b2" onclick="MMED.pop();mapaExtras()">↶ Deshacer</button> `);
+  }
+  if (MCER && MCER.res){
+    const ok = MCER.res.filter(r => r.p);
+    ok.forEach((r, i) => L.marker([r.p.lat, r.p.lng], { icon: L.divIcon({ className: '', html: `<div class="mnum${i ? '' : ' first'}">${i + 1}</div>`, iconSize: [24, 24], iconAnchor: [12, 12] }) }).addTo(MXCAPA).bindTooltip(esc(r.q) + ' · ' + fmtKm(r.dm != null ? r.dm : r.d), { direction: 'top', offset: [0, -10] }));
+    if (MCER.orden && S.mapa.sucursal) L.polyline([S.mapa.sucursal, ...MCER.orden.map(r => r.p)], { color: '#2563eb', weight: 2, opacity: .6 }).addTo(MXCAPA);
+  }
+}
+/* lee coordenadas desde un enlace de Google Maps o un texto "lat, lng" */
+function llDeTexto(t){
+  t = decodeURIComponent(String(t || '')); let m = t.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/) || t.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || t.match(/[?&](?:q|query|ll|destination)=(-?\d+\.\d+),\s*(-?\d+\.\d+)/) || t.match(/^\s*(-?\d{1,2}\.\d+)\s*[,; ]\s*(-?\d{1,3}\.\d+)\s*$/);
+  if (!m) return null; const lat = +m[1], lng = +m[2]; return Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? { lat, lng } : null;
+}
+function mapaHerrHTML(){
+  if (!MHER) return ''; const suc = S.mapa.sucursal, x = `<button class="bx" style="float:right" onclick="mapaHerr('${MHER}')" title="Cerrar">✕</button>`;
+  if (MHER === 'suc') return `<div class="mtool">${x}<b>🏬 Ubicación de la ferretería</b>
+    <p class="muted" style="margin:4px 0">En Google Maps haz clic derecho sobre la ferretería y copia las coordenadas, o copia el enlace de la barra de direcciones y pégalo aquí.</p>
+    <input id="mhIn" placeholder="-33.0050, -71.1730  o  enlace de Google Maps" style="width:100%" onkeydown="if(event.key==='Enter')mapaSucGuardar()">
+    <div class="row" style="margin-top:6px"><button class="b" onclick="mapaSucGuardar()">Guardar</button>${MYO ? `<button class="b2" onclick="mapaSucGuardar(MYO)">Usar mi ubicación</button>` : ''}</div>
+    <div id="mhMsg" class="muted" style="margin-top:4px">${suc ? 'Actual: ' + gmLL(suc) + ` · <a href="https://www.google.com/maps?q=${gmLL(suc)}" target="_blank" rel="noopener">ver en Google Maps ↗</a>` : '<span class="warn">Aún no está ubicada.</span>'}</div></div>`;
+  const res = MCER && MCER.res;
+  return `<div class="mtool">${x}<b>🎯 Dirección más cercana</b>
+    <p class="muted" style="margin:4px 0">Una dirección por renglón (calle y número, localidad, o coordenadas / enlace de Google Maps).</p>
+    <textarea id="mhIn" rows="4" style="width:100%" placeholder="Av. Eastman 1500, Olmué&#10;Las Palmas, Limache">${esc(MCER ? MCER.txt : '')}</textarea>
+    <div class="row" style="margin-top:6px"><button class="b" onclick="mapaCercana()">Calcular</button>${res ? `<button class="b2" onclick="MCER=null;panelMapa();mapaExtras()">Limpiar</button>` : ''}</div>
+    ${!suc ? '<p class="warn" style="margin:6px 0 0">Primero ubica la ferretería (🏬).</p>' : ''}
+    <div id="mhMsg" style="margin-top:6px">${res ? mapaCercaRes() : ''}</div></div>`;
+}
+function mapaSucGuardar(p){
+  p = p || llDeTexto(($('#mhIn') || {}).value);
+  if (!p){ $('#mhMsg').innerHTML = '<span class="err">No encontré coordenadas. Si es un enlace corto (maps.app.goo.gl), ábrelo y copia el enlace largo o las coordenadas.</span>'; return; }
+  S.mapa.sucursal = { lat: p.lat, lng: p.lng }; guardar(); dibujarMapa(); mapaExtras(); MAPA.setView([p.lat, p.lng], Math.max(MAPA.getZoom(), 15));
+}
+async function mapaCercana(){
+  const suc = S.mapa.sucursal, txt = ($('#mhIn') || {}).value || '', qs = txt.split('\n').map(x => x.trim()).filter(Boolean);
+  if (!suc){ mapaHerr('suc'); return; } if (qs.length < 1) return;
+  MCER = { txt, res: qs.map(q => ({ q })) }; const msg = $('#mhMsg');
+  for (let i = 0; i < qs.length; i++){
+    const r = MCER.res[i]; if (msg) msg.innerHTML = `<span class="muted">Buscando ${i + 1} de ${qs.length}…</span>`;
+    r.p = llDeTexto(r.q);
+    if (!r.p){ try { let g = await geoQ(r.q); if (!g && !/olmu|limache|quillota|villa alemana/i.test(r.q)) g = await geoQ(r.q + ', Olmué'); if (g) r.p = { lat: g[0], lng: g[1] }; } catch(e){} await new Promise(ok => setTimeout(ok, 1000)); }
+    if (r.p) r.d = distM(suc, r.p);
+  }
+  const ok = MCER.res.filter(r => r.p);
+  if (ok.length){ /* distancia y tiempo por camino (OSRM); si falla, queda la línea recta */
+    try { const pts = [suc, ...ok.map(r => r.p)].map(p => p.lng + ',' + p.lat).join(';');
+      const j = await (await fetch(`https://router.project-osrm.org/table/v1/driving/${pts}?sources=0&annotations=distance,duration`)).json();
+      if (j.code === 'Ok') ok.forEach((r, i) => { r.dm = j.distances[0][i + 1]; r.dt = j.durations[0][i + 1]; });
+    } catch(e){}
+  }
+  MCER.res.sort((a, b) => (!a.p) - (!b.p) || ((a.dm != null ? a.dm : a.d) - (b.dm != null ? b.dm : b.d)));
+  /* orden de visita sugerido: siempre al punto más cercano al anterior */
+  const rest = MCER.res.filter(r => r.p), ord = []; let cur = suc;
+  while (rest.length){ let bi = 0; rest.forEach((r, i) => { if (distM(cur, r.p) < distM(cur, rest[bi].p)) bi = i; }); cur = rest[bi].p; ord.push(rest.splice(bi, 1)[0]); }
+  MCER.orden = ord.length > 1 ? ord : null;
+  panelMapa(); mapaExtras();
+  if (ok.length) MAPA.fitBounds([[suc.lat, suc.lng], ...ok.map(r => [r.p.lat, r.p.lng])], { padding: [50, 50] });
+}
+function mapaCercaRes(){
+  const suc = S.mapa.sucursal, res = MCER.res;
+  return `<table class="mres">${res.map((r, i) => `<tr><td><span class="mnum${i || !r.p ? '' : ' first'}">${r.p ? i + 1 : '?'}</span></td><td>${esc(r.q)}${!r.p ? '<br><span class="err">no encontrada</span>' : `<br><span class="muted">${r.dm != null ? fmtKm(r.dm) + ' por camino · ' + fmtMin(r.dt) + ' · ' : ''}${fmtKm(r.d)} recta</span>`}</td>
+    <td>${r.p ? `<a href="${gmDir(suc, r.p)}" target="_blank" rel="noopener" title="Cómo llegar desde la ferretería">↗</a>` : ''}</td></tr>`).join('')}</table>
+    ${res[0] && res[0].p ? `<p style="margin:6px 0 2px">La más cercana es <b>${esc(res[0].q)}</b>.</p>` : ''}
+    ${MCER.orden ? `<p class="muted" style="margin:2px 0">Orden de visita sugerido: ${MCER.orden.map(r => esc(r.q.split(',')[0])).join(' → ')}</p><a class="b2" style="display:inline-block;text-decoration:none;margin-top:4px" href="${gmDir(suc, MCER.orden[MCER.orden.length - 1].p, MCER.orden.slice(0, -1).map(r => r.p))}" target="_blank" rel="noopener">Abrir recorrido en Google Maps ↗</a>` : ''}`;
+}
 function encuadrarMapa(){ const ll = rutasLista().map(circRuta).filter(Boolean).map(p => [p.lat, p.lng]); if (S.mapa.sucursal) ll.push([S.mapa.sucursal.lat, S.mapa.sucursal.lng]); if (ll.length) MAPA.fitBounds(ll, { padding: [60, 60] }); }
 const dormir = ms => new Promise(r => setTimeout(r, ms));
 async function geoQ(q){ const r = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=cl&bounded=1&viewbox=-71.60,-32.85,-70.95,-33.20&q=' + encodeURIComponent(q), { headers: { 'Accept-Language': 'es' } }); const j = await r.json(); return j[0] ? [+j[0].lat, +j[0].lon] : null; }
@@ -2462,7 +2656,7 @@ function vPersonal(){
   $('#main').innerHTML = `<div class="card"><div class="row"><h2 style="flex:1;margin:0">Personal de bodega (${S.personal.length - pend} de ${DOTACION.reduce((a, d) => a + d[1], 0)} · ${pend} pendientes)</h2><button class="b2 noprint" onclick="window.print()">🖨 Imprimir</button></div>
   ${resumenTurnos()}
   <details class="noprint" style="margin:8px 0"><summary style="cursor:pointer;color:var(--az)">Dotación definitiva por cargo</summary><table style="width:auto;margin-top:6px"><thead><tr><th>Cargo</th><th>Dotación</th><th>Asignados</th><th>Pendientes</th></tr></thead><tbody>${resumen}</tbody></table></details>
-  <div class="noprint" style="display:flex;align-items:center;gap:6px;margin-top:8px;max-width:420px"><input id="pBus" placeholder="🔍 Buscar trabajador (nombre, cargo, turno, teléfono…)" value="${esc(PBUS)}" style="flex:1" oninput="PBUS=this.value;pFiltrar()" onkeydown="if(event.key==='Escape'){PBUS='';this.value='';pFiltrar()}"><button class="bx" id="pBusX" title="Limpiar" style="${PBUS ? '' : 'display:none'}" onclick="PBUS='';$('#pBus').value='';pFiltrar();$('#pBus').focus()">✕</button><span id="pBusN" class="muted" style="font-size:12px;white-space:nowrap"></span></div>
+  <div class="noprint" style="display:flex;align-items:center;gap:6px;margin-top:8px;max-width:420px"><input id="pBus" placeholder="🔍 Buscar trabajador (nombre, cargo, turno, teléfono…)" value="${esc(PBUS)}" style="flex:1" oninput="PBUS=this.value;pFiltrar()" onkeydown="if(event.key==='Escape'){PBUS='';this.value='';pFiltrar()}"><span id="pBusN" class="muted" style="font-size:12px;white-space:nowrap"></span></div>
   <table id="pTabla" style="margin-top:8px"><thead><tr><th>#</th>${[['nombre', 'Nombre'], ['cargo', 'Cargo'], ['turno', 'Turno'], ['descanso', 'Día de descanso'], ['cumple', 'Cumpleaños'], ['telefono', 'Teléfono']].map(([k, l]) => `<th style="cursor:pointer;user-select:none;white-space:nowrap" title="Ordenar por ${l.toLowerCase()}" onclick="sortP('${k}')">${l} ${PSORT && PSORT.k === k ? (PSORT.d === 1 ? '▲' : '▼') : '<span style="opacity:.3">↕</span>'}</th>`).join('')}<th class="noprint">${PSORT ? '<button class="bx" title="Volver al orden manual" onclick="PSORT=null;vPersonal()">↺</button>' : ''}</th></tr></thead><tbody>
   ${filasP().map(({ p, i }, n) => `<tr data-q="${esc(norm([p.nombre, p.cargo, p.turno ? 'turno ' + p.turno : '', p.descanso, p.telefono, p.pendiente ? 'pendiente' : ''].join(' ')))}"><td>${n + 1}</td><td><input value="${esc(p.nombre)}" ${p.pendiente ? 'style="font-style:italic;opacity:.75" onfocus="this.select()" oninput="if(this.value.trim()&&!/^\\s*pendiente/i.test(this.value)){this.style.fontStyle=\'normal\';this.style.opacity=1}"' : ''} onchange="S.personal[${i}].nombre=this.value;if(S.personal[${i}].pendiente&&this.value.trim()&&!/^\s*pendiente/i.test(this.value))delete S.personal[${i}].pendiente;guardar();vPersonal()"></td>
     <td>${sel(i, 'cargo', CARGOS)}</td><td style="width:70px">${sel(i, 'turno', ['A','B'])}</td><td>${S.turnos.def && p.descanso ? `<b>${p.descanso}</b> <span title="Bloqueado: los turnos definitivos ya están creados. El día libre solo se mueve semana a semana en el calendario.">🔒</span>` : sel(i, 'descanso', DIAS.slice(0, 5))}${!p.descanso ? ' <span class="warn" title="sin día de descanso">⚠</span>' : ''}</td>
@@ -3099,7 +3293,7 @@ function pintarCat(){
     const hay = c.nuevos.length + c.sobran.length + c.codigo.length + c.desc.length + c.area.length + c.disc.length;
     h += `<hr style="margin:12px 0"><p><b>${esc(c.archivo)}</b>: ${c.total.toLocaleString('es-CL')} filas · ${c.iguales.toLocaleString('es-CL')} sin cambios · <b>${c.nuevos.length.toLocaleString('es-CL')} faltan</b> en la base · <b>${c.sobran.length.toLocaleString('es-CL')} sobran</b> en la base · ${c.codigo.length} con código distinto · ${c.desc.length} con descripción distinta · ${c.area.length} con sala/bodega distinto · ${c.disc.length} descontinuados.</p>`;
     if (c.sinArea) h += `<p class="warn">El archivo no trae la columna AreaGen: no se puede comparar sala/bodega.</p>`;
-    if (hay) h += `<p><button class="b" onclick="catDescargar()">⬇ Descargar informe (Excel)</button> <button class="b2" onclick="catCopiarInforme()">📋 Copiar informe</button> <button class="b" style="background:#16a34a;border-color:#16a34a" onclick="catAplicar()">✔ Aplicar a la base</button> <button class="b2" onclick="CATU=null;pintarCat()">Cerrar</button></p><p class="muted" style="display:none">Para aplicar los cambios, mándale el informe a Claude y dile cuáles quieres.</p>`;
+    if (hay) h += `<p><button class="b" onclick="catDescargar()">⬇ Descargar informe (Excel)</button> <button class="b2" onclick="catCopiarInforme()">📋 Copiar informe</button> <button class="b" onclick="catAplicar()">✔ Aplicar a la base</button> <button class="b2" onclick="CATU=null;pintarCat()">Cerrar</button></p><p class="muted" style="display:none">Para aplicar los cambios, mándale el informe a Claude y dile cuáles quieres.</p>`;
     if (c.nuevos.length) h += `<h3>🆕 Faltan en la base (${c.nuevos.length})</h3>` + tabla(['Código', 'Descripción', 'Va a'], c.nuevos.map(q => tr(q.c, q.d + (q.dis ? ' (descontinuado)' : ''), CAT_AR(q.a))));
     if (c.sobran.length) h += `<h3>➖ Ya no están en la ferre (${c.sobran.length})</h3><p class="muted">Están en la base y no vienen en el CSV: al aplicar salen de la base (si alguno está en la estantería, el casillero queda marcado).</p>` + tabla(['Código', 'Descripción', 'Está en', 'Origen'], c.sobran.map(q => tr(q.c, q.d, CAT_AR(q.a), q.man ? 'agregado a mano' : '')));
     if (c.codigo.length) h += `<h3>🔁 Mismo producto con código distinto (${c.codigo.length})</h3>` + tabla(['Código en la base', 'Código en el CSV', 'Descripción'], c.codigo.map(x => tr(x.viejo, x.nuevo, x.d)));
@@ -3442,7 +3636,7 @@ function vAdmin(){
     <h3>Nuevo usuario</h3><div class="row"><label>Usuario<input id="nU"></label><label>Nombre<input id="nN"></label><label>Contraseña<input id="nP" type="password"></label>
     <label>Rol<select id="nR"><option value="supervisor">Supervisor</option><option value="admin">Administrador</option></select></label><button class="b" onclick="nuevoUsuario()">Crear</button></div></div>
 </div>
-  ${USER.rol === 'admin' ? `<p style="grid-column:1/-1;text-align:right;margin:2px 8px"><a href="#" onclick="TAB='remu';render();return false" style="color:#c3c8d2;font-size:11px;text-decoration:none">remuneración</a></p>` : ''}`;
+`;
 }
 function eliminarUsuario(i){
   const u = S.users[i]; if (u.id === USER.id) return;
