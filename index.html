@@ -1449,6 +1449,11 @@ function estDesmarcar(c){
   delete e.prods[c]; Object.keys(e.celdas).forEach(id => estQuitar(id, c));
   guardar(); vEstanteria();
 }
+let EST_CV = null;
+function estColorVivo(tipo, k, v, fin){ // aplica y guarda al instante; el plano se redibuja enseguida (sin esperar a cerrar el selector)
+  const e = S.estanteria; if (tipo === 'f'){ e.famCol[k] = v; estTonos(e, k, null); } else { e.subCol[k] = v; (e.subFijo = e.subFijo || {})[k] = true; estTonos(e, null, k); }
+  guardar(); clearTimeout(EST_CV); EST_CV = setTimeout(() => { vEstanteria(); const m = $('#estCfOk'); if (m){ m.textContent = '✓ Guardado ' + new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit' }); m.style.opacity = 1; } }, fin ? 0 : 120);
+}
 function estColorEdit(tipo, k, v){ const e = S.estanteria; if (tipo === 'f'){ e.famCol[k] = v; estTonos(e, k, null); } else if (tipo === 's'){ e.subCol[k] = v; (e.subFijo = e.subFijo || {})[k] = true; estTonos(e, null, k); } else if (tipo === 'fa') e.famAb[k] = v.trim() || abrev(k); else if (tipo === 'sa') e.subAb[k] = v.trim(); guardar(); vEstanteria(); }
 function estRecolorear(){ if (!confirm('¿Volver a generar todos los colores automáticamente?')) return; S.estanteria.subFijo = {}; estColores(S.estanteria, true); guardar(); vEstanteria(); }
 function estHolgEdit(v){ S.estanteria.holg = Math.max(0, n(v, 2)); guardar(); vEstanteria(); }
@@ -1654,9 +1659,9 @@ function estCant(id, c, v){
 function estConfHTML(){
   const e = estInit(), fams = estFams(e);
   return `<div class="grid2"><div><h4 style="margin:0 0 4px">Familias</h4><table><thead><tr><th>Color</th><th>Familia</th><th>Abrev.</th></tr></thead><tbody>
-      ${fams.map(f => `<tr><td><input type="color" value="${e.famCol[f]}" style="width:36px;padding:0" onchange="estColorEdit('f','${esc(f)}',this.value)"></td><td>${esc(f)}</td><td><input value="${esc(e.famAb[f])}" style="width:80px" onchange="estColorEdit('fa','${esc(f)}',this.value)"></td></tr>`).join('')}</tbody></table></div>
+      ${fams.map(f => `<tr><td><input type="color" value="${e.famCol[f]}" style="width:36px;padding:0" oninput="estColorVivo('f','${esc(f)}',this.value)" onchange="estColorVivo('f','${esc(f)}',this.value,true)"></td><td>${esc(f)}</td><td><input value="${esc(e.famAb[f])}" style="width:80px" onchange="estColorEdit('fa','${esc(f)}',this.value)"></td></tr>`).join('')}</tbody></table></div>
     <div><h4 style="margin:0 0 4px">Subfamilias</h4><table><thead><tr><th>Color</th><th>Familia › Subfamilia</th><th>Abrev.</th></tr></thead><tbody>
-      ${[...new Set(Object.values(e.prods).map(p => subKey(p.f, p.s)))].sort().map(k => `<tr><td><input type="color" value="${e.subCol[k]}" style="width:36px;padding:0" onchange="estColorEdit('s','${esc(k)}',this.value)"></td><td>${esc(k.replace('|', ' › '))}</td><td><input value="${esc(e.subAb[k])}" style="width:80px" onchange="estColorEdit('sa','${esc(k)}',this.value)"></td></tr>`).join('')}</tbody></table></div></div>
+      ${[...new Set(Object.values(e.prods).map(p => subKey(p.f, p.s)))].sort().map(k => `<tr><td><input type="color" value="${e.subCol[k]}" style="width:36px;padding:0" oninput="estColorVivo('s','${esc(k)}',this.value)" onchange="estColorVivo('s','${esc(k)}',this.value,true)"></td><td>${esc(k.replace('|', ' › '))}</td><td><input value="${esc(e.subAb[k])}" style="width:80px" onchange="estColorEdit('sa','${esc(k)}',this.value)"></td></tr>`).join('')}</tbody></table></div></div>
     <button class="b2" style="margin-top:8px" onclick="estRecolorear()">🎨 Regenerar colores automáticos</button>
     <h4 style="margin:12px 0 4px">Holgura entre perfiles</h4>
     <label class="muted" style="flex-direction:row;align-items:center;gap:6px">Holgura para calcular cuántos caben (mm): <input type="number" min="0" step="0.5" value="${fmt(estHolg() * 10, 1)}" style="width:70px" onchange="estHolgEdit(this.value)"></label>
@@ -1669,12 +1674,12 @@ function estConfHTML(){
 function estConfAbrir(){
   let m = $('#estConf');
   if (!m){ m = document.createElement('div'); m.id = 'estConf'; document.body.appendChild(m);
-    m.style.cssText = 'position:fixed;inset:0;background:rgba(17,24,39,.55);z-index:95;display:flex;align-items:flex-start;justify-content:center;padding:20px 10px;overflow:auto';
+    m.style.cssText = 'position:fixed;inset:0;background:rgba(17,24,39,.12);z-index:95;display:flex;align-items:stretch;justify-content:flex-end;padding:0'; // panel a la derecha: el plano se ve mientras cambias colores
     m.onclick = ev => { if (ev.target === m) estConfCerrar(); };
     document.addEventListener('keydown', estConfEsc); }
   estConfRender();
 }
-function estConfRender(){ const m = $('#estConf'); if (!m) return; const sc = m.firstChild ? m.firstChild.scrollTop : 0; m.innerHTML = `<div style="background:#fff;border-radius:10px;max-width:1000px;width:100%;box-shadow:0 10px 30px #0006"><div class="row" style="padding:12px 16px;border-bottom:1px solid #e5e7eb;align-items:center"><h3 style="flex:1;margin:0;color:var(--az)">⚙ Colores, abreviaturas y medidas</h3><button class="b2" onclick="estConfCerrar()">Cerrar (Esc)</button></div><div style="padding:12px 16px">${estConfHTML()}</div></div>`; }
+function estConfRender(){ const m = $('#estConf'); if (!m) return; const sc = m.firstChild ? m.firstChild.scrollTop : 0; m.innerHTML = `<div style="background:#fff;width:min(560px,100%);height:100%;overflow:auto;box-shadow:-6px 0 24px #0004"><div class="row" style="position:sticky;top:0;background:#fff;z-index:1;padding:12px 16px;border-bottom:1px solid #e5e7eb;align-items:center;gap:8px"><h3 style="flex:1;margin:0;color:var(--az)">⚙ Colores, abreviaturas y medidas</h3><span id="estCfOk" style="color:#166534;font-size:12px;opacity:0;transition:opacity .3s"></span><button class="b" onclick="estConfCerrar();toast('✓ Colores guardados')">✓ Listo</button></div><div style="padding:12px 16px"><p class="muted" style="margin:0 0 8px;font-size:12px">Los cambios se guardan al instante y se ven en el plano a la izquierda. Familia: tiñe sus subfamilias y productos. Subfamilia: tiñe sus productos.</p>${estConfHTML().replace('<div class="grid2">', '<div>')}</div></div>`; }
 function estConfEsc(ev){ if (ev.key === 'Escape') estConfCerrar(); }
 function estConfCerrar(){ const m = $('#estConf'); if (m) m.remove(); document.removeEventListener('keydown', estConfEsc); }
 function vEstanteriaHTML(){
