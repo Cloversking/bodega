@@ -890,7 +890,7 @@ const estKey = id => String(id).replace(/^\d+/, m => m.padStart(2, '0'));
 const EST_HUES = [212, 150, 28, 352, 275, 48, 190, 110, 320, 0, 240, 80];
 let EST_ESC = 1.5, EST_SEL = [], EST_MODO = null, EST_BUS = '', EST_PF = { q: '', f: '', s: '', sin: false }, EST_AF = { q: '', f: '', s: '', sin: true, sig: true }, EST_ACT = null, EST_MOV = null, EST_NF = '', EST_NS = '';
 let EST_OPEN = { plano: true, busca: true };
-let EST_IMP = { modo: 'producto', color: true, txt: true, leyenda: true, listado: false, alc: 'all1', papel: 'A4', grupos: [], desde: 1, hasta: 30 };
+let EST_IMP = { modo: 'producto', color: true, txt: true, leyenda: false, listado: false, alc: 'all1', papel: 'A4', grupos: [], desde: 1, hasta: 30 };
 const oscuro = h => { const v = parseInt(String(h).slice(1), 16); return ((v >> 16) * 299 + ((v >> 8 & 255) * 587) + (v & 255) * 114) / 1000 < 125; };
 const pad2 = v => String(v).padStart(2, '0');
 function hsl2hex(h, s, l){ s /= 100; l /= 100; const k = n => (n + h / 30) % 12, a = s * Math.min(l, 1 - l), f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1))); return '#' + [f(0), f(8), f(4)].map(x => Math.round(x * 255).toString(16).padStart(2, '0')).join(''); }
@@ -1025,7 +1025,7 @@ function estSVG(desde, hasta, o){
   });
   s += `<line x1="${izq - 4}" y1="${Y(0)}" x2="${W - 4}" y2="${Y(0)}" stroke="#000" stroke-width="2"/>`;
   [...new Set(cs.map(c => c.col))].forEach(cn => { const c = cs.find(z => z.col === cn); s += `<text x="${X(c.dx + c.dw / 2)}" y="${Y(0) + 14}" font-size="11" text-anchor="middle" font-weight="bold">${cn}</text>`; });
-  s += `<text x="${izq}" y="${Y(0) + 29}" font-size="10" fill="#444">Vista de frente · casillero = columna + nivel (A piso … F arriba) + parte · medidas alto × ancho en cm · ≈N = cuántos caben con holgura · ${modo === 'producto' ? (o.imp ? 'nombre del material en cada casillero' : '#n = número del producto (ver listado)') : modo === 'sub' ? 'coloreado por subfamilia' : 'coloreado por familia'}</text></svg>`;
+  if (!o.imp || o.leyenda) s += `<text x="${izq}" y="${Y(0) + 29}" font-size="10" fill="#444">Vista de frente · casillero = columna + nivel (A piso … F arriba) + parte · medidas alto × ancho en cm · ≈N = cuántos caben con holgura · ${modo === 'producto' ? (o.imp ? 'nombre del material en cada casillero' : '#n = número del producto (ver listado)') : modo === 'sub' ? 'coloreado por subfamilia' : 'coloreado por familia'}</text></svg>`;
   return s;
 }
 function estClic(ev, id){
@@ -2091,16 +2091,17 @@ function estDlgImprimir(){
     <label>En cada casillero<select id="eiM">${[['producto', 'Nombre del material'], ['familia', 'Familia'], ['sub', 'Subfamilia']].map(([v, t]) => `<option value="${v}" ${(I.modo || 'producto') === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
     <label style="flex-direction:row;align-items:center;gap:6px;color:inherit;font-size:14px" title="Las columnas elegidas se estiran para ocupar todo el ancho de la hoja"><input type="checkbox" id="eiFit" ${I.fit ? 'checked' : ''}> <b>Toda la página</b></label>
     <label style="flex-direction:row;align-items:center;gap:6px;color:inherit;font-size:14px" title="Agrega una hoja con el código y la descripción completa de lo que hay en cada casillero"><input type="checkbox" id="eiL" ${I.listado ? 'checked' : ''}> Listado por casillero</label>
+    <label style="flex-direction:row;align-items:center;gap:6px;color:inherit;font-size:14px" title="Leyenda de colores y nota explicativa al pie de la hoja"><input type="checkbox" id="eiLey" ${I.leyenda ? 'checked' : ''}> Leyenda abajo</label>
     <button class="b" onclick="estImprimirYa()">🖨 Imprimir</button></div>
-    <p class="muted" style="margin:6px 0 0">Se imprime en A4 horizontal con la leyenda abajo. <b>En cada casillero</b>: qué se escribe y cómo se colorea. <b>Toda la página</b>: las columnas elegidas ocupan todo el ancho de la hoja; sin marcar, se imprimen del mismo tamaño que en la estantería completa.</p></div>`;
+    <p class="muted" style="margin:6px 0 0">Se imprime en A4 horizontal. <b>En cada casillero</b>: qué se escribe y cómo se colorea. <b>Toda la página</b>: las columnas elegidas ocupan todo el ancho de la hoja; sin marcar, se imprimen del mismo tamaño que en la estantería completa.</p></div>`;
 }
 function estImprimirYa(){
   const tot = S.estanteria.tramos.reduce((a, t) => a + t.cols, 0), alc = (document.querySelector('input[name=eiA]:checked') || {}).value || 'all1';
   let d = Math.round(+$('#eiD').value || 1), h = Math.round(+$('#eiH').value || tot);
   d = Math.max(1, Math.min(d, tot)); h = Math.max(1, Math.min(h, tot)); if (d > h) [d, h] = [h, d];
-  const titulo = String($('#eiTit').value || '').trim(), fit = $('#eiFit').checked, modo = $('#eiM').value || 'producto', listado = $('#eiL').checked;
-  EST_IMP = { alc, desde: d, hasta: h, titulo, fit, modo, listado };
-  imprimirEstanteria({ modo, color: true, txt: true, leyenda: true, listado, papel: 'A4', alc, desde: d, hasta: h, titulo, fit });
+  const titulo = String($('#eiTit').value || '').trim(), fit = $('#eiFit').checked, modo = $('#eiM').value || 'producto', listado = $('#eiL').checked, leyenda = $('#eiLey').checked;
+  EST_IMP = { alc, desde: d, hasta: h, titulo, fit, modo, listado, leyenda };
+  imprimirEstanteria({ modo, color: true, txt: true, leyenda, listado, papel: 'A4', alc, desde: d, hasta: h, titulo, fit });
 }
 function estPartes(o){
   const e = estInit(); let c = 0; const gr = e.tramos.map(t => { const a = c + 1; c += t.cols; return { id: t.id, nombre: t.nombre, a, b: c }; });
