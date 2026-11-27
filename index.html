@@ -1656,31 +1656,38 @@ function estCant(id, c, v){
   if (t === '') delete e.cant[id][c]; else { const q = Number(t); if (isNaN(q) || q < 0){ toast('Cantidad no válida'); return vEstanteria(); } e.cant[id][c] = q; }
   if (!Object.keys(e.cant[id]).length) delete e.cant[id]; guardar(); vEstanteria();
 }
+let EST_CFAB = { f: true, s: false, h: false, m: false }, EST_CFQ = '';
 function estConfHTML(){
-  const e = estInit(), fams = estFams(e);
-  return `<div class="grid2"><div><h4 style="margin:0 0 4px">Familias</h4><table><thead><tr><th>Color</th><th>Familia</th><th>Abrev.</th></tr></thead><tbody>
-      ${fams.map(f => `<tr><td><input type="color" value="${e.famCol[f]}" style="width:36px;padding:0" oninput="estColorVivo('f','${esc(f)}',this.value)" onchange="estColorVivo('f','${esc(f)}',this.value,true)"></td><td>${esc(f)}</td><td><input value="${esc(e.famAb[f])}" style="width:80px" onchange="estColorEdit('fa','${esc(f)}',this.value)"></td></tr>`).join('')}</tbody></table></div>
-    <div><h4 style="margin:0 0 4px">Subfamilias</h4><table><thead><tr><th>Color</th><th>Familia › Subfamilia</th><th>Abrev.</th></tr></thead><tbody>
-      ${[...new Set(Object.values(e.prods).map(p => subKey(p.f, p.s)))].sort().map(k => `<tr><td><input type="color" value="${e.subCol[k]}" style="width:36px;padding:0" oninput="estColorVivo('s','${esc(k)}',this.value)" onchange="estColorVivo('s','${esc(k)}',this.value,true)"></td><td>${esc(k.replace('|', ' › '))}</td><td><input value="${esc(e.subAb[k])}" style="width:80px" onchange="estColorEdit('sa','${esc(k)}',this.value)"></td></tr>`).join('')}</tbody></table></div></div>
-    <button class="b2" style="margin-top:8px" onclick="estRecolorear()">🎨 Regenerar colores automáticos</button>
-    <h4 style="margin:12px 0 4px">Holgura entre perfiles</h4>
-    <label class="muted" style="flex-direction:row;align-items:center;gap:6px">Holgura para calcular cuántos caben (mm): <input type="number" min="0" step="0.5" value="${fmt(estHolg() * 10, 1)}" style="width:70px" onchange="estHolgEdit(this.value)"></label>
-    <h4 style="margin:12px 0 4px">Medidas por grupo (de izquierda a derecha)</h4>
-    <table><thead><tr><th>Grupo</th><th>Columnas</th><th>Ancho columna (cm)</th><th>Alto de cada nivel en cm, de piso hacia arriba (F, E, D, C, B, A)</th></tr></thead><tbody>
-    ${e.tramos.map((t, i) => `<tr><td><span style="display:inline-block;width:12px;height:12px;background:${t.color};border:1px solid #555"></span> <input value="${esc(t.nombre)}" onchange="estTramoEdit(${i},'nombre',this.value)"></td><td>${t.cols}</td>
-      <td><input type="number" value="${t.ancho}" style="width:70px" onchange="estTramoEdit(${i},'ancho',this.value)"></td><td><input value="${t.niveles.join(', ')}" onchange="estTramoEdit(${i},'niveles',this.value)"></td></tr>`).join('')}</tbody></table>
-    <button class="b2" style="margin-top:8px" onclick="if(confirm('¿Restaurar las medidas de partida?')){S.estanteria.tramos=JSON.parse(JSON.stringify(EST_TRAMOS_DEF));guardar();vEstanteria()}">Restaurar medidas de partida</button>`;
+  const e = estInit(), fams = estFams(e), subs = [...new Set(Object.values(e.prods).map(p => subKey(p.f, p.s)))].sort();
+  const sec = (k, t, n, body) => `<details ${EST_CFAB[k] ? 'open' : ''} ontoggle="EST_CFAB['${k}']=this.open" style="border:1px solid #e5e7eb;border-radius:8px;margin-bottom:8px"><summary style="cursor:pointer;padding:8px 10px;font-weight:600;color:var(--az)">${t}${n != null ? ` <span class="muted" style="font-weight:400">(${n})</span>` : ''}</summary><div style="padding:0 10px 10px">${body}</div></details>`;
+  const fila = (q, col, on, nom, ab, onab) => `<tr data-q="${esc(norm(q))}"><td style="width:44px"><input type="color" value="${col}" style="width:36px;padding:0" oninput="${on}(this.value)" onchange="${on}(this.value,true)"></td><td>${nom}</td><td style="width:90px"><input value="${esc(ab)}" style="width:80px" onchange="${onab}"></td></tr>`;
+  return sec('f', 'Familias', fams.length, `<table class="cfT"><tbody>${fams.map(f => fila(f, e.famCol[f], `((v,x)=>estColorVivo('f','${esc(f)}',v,x))`, esc(f), e.famAb[f], `estColorEdit('fa','${esc(f)}',this.value)`)).join('')}</tbody></table>`)
+    + sec('s', 'Subfamilias', subs.length, `<table class="cfT"><tbody>${subs.map(k => fila(k.replace('|', ' ') , e.subCol[k], `((v,x)=>estColorVivo('s','${esc(k)}',v,x))`, `<span class="muted">${esc(k.split('|')[0])} ›</span> ${esc(k.split('|')[1] || '')}`, e.subAb[k], `estColorEdit('sa','${esc(k)}',this.value)`)).join('')}</tbody></table>
+      <button class="b2" style="margin-top:6px" onclick="estRecolorear()">🎨 Regenerar colores automáticos</button>`)
+    + sec('h', 'Holgura entre perfiles', null, `<label class="muted" style="flex-direction:row;align-items:center;gap:6px">Holgura (mm) <input type="number" min="0" step="0.5" value="${fmt(estHolg() * 10, 1)}" style="width:70px" onchange="estHolgEdit(this.value)"></label>`)
+    + sec('m', 'Medidas por grupo', e.tramos.length, `<table><thead><tr><th>Grupo</th><th>Col.</th><th>Ancho (cm)</th><th>Alto niveles A→F (cm)</th></tr></thead><tbody>
+    ${e.tramos.map((t, i) => `<tr><td><span style="display:inline-block;width:12px;height:12px;background:${t.color};border:1px solid #555"></span> <input value="${esc(t.nombre)}" style="width:110px" onchange="estTramoEdit(${i},'nombre',this.value)"></td><td>${t.cols}</td>
+      <td><input type="number" value="${t.ancho}" style="width:64px" onchange="estTramoEdit(${i},'ancho',this.value)"></td><td><input value="${t.niveles.join(', ')}" style="width:150px" onchange="estTramoEdit(${i},'niveles',this.value)"></td></tr>`).join('')}</tbody></table>
+    <button class="b2" style="margin-top:6px" onclick="if(confirm('¿Restaurar las medidas de partida?')){S.estanteria.tramos=JSON.parse(JSON.stringify(EST_TRAMOS_DEF));guardar();vEstanteria()}">Restaurar medidas de partida</button>`);
+}
+function estCfFiltrar(){ // buscador del panel: filtra familias y subfamilias y abre las secciones con resultados
+  const ws = norm(EST_CFQ).split(/\s+/).filter(Boolean); const x = $('#estCfX'); if (x) x.style.display = EST_CFQ ? '' : 'none';
+  document.querySelectorAll('#estConf details').forEach(d => { const trs = [...d.querySelectorAll('tr[data-q]')]; if (!trs.length) return; let v = 0; trs.forEach(tr => { const ok = !ws.length || ws.every(w => tr.dataset.q.includes(w)); tr.style.display = ok ? '' : 'none'; if (ok) v++; }); if (ws.length) d.open = v > 0; });
 }
 function estConfAbrir(){
   let m = $('#estConf');
   if (!m){ m = document.createElement('div'); m.id = 'estConf'; document.body.appendChild(m);
-    m.style.cssText = 'position:fixed;inset:0;background:rgba(17,24,39,.12);z-index:95;display:flex;align-items:stretch;justify-content:flex-end;padding:0'; // panel a la derecha: el plano se ve mientras cambias colores
-    m.onclick = ev => { if (ev.target === m) estConfCerrar(); };
+    m.style.cssText = 'position:fixed;top:0;right:0;bottom:0;width:min(520px,100%);z-index:95;display:flex'; // panel a la derecha; no se cierra al hacer clic fuera (solo con Listo)
     document.addEventListener('keydown', estConfEsc); }
   estConfRender();
 }
-function estConfRender(){ const m = $('#estConf'); if (!m) return; const sc = m.firstChild ? m.firstChild.scrollTop : 0; m.innerHTML = `<div style="background:#fff;width:min(560px,100%);height:100%;overflow:auto;box-shadow:-6px 0 24px #0004"><div class="row" style="position:sticky;top:0;background:#fff;z-index:1;padding:12px 16px;border-bottom:1px solid #e5e7eb;align-items:center;gap:8px"><h3 style="flex:1;margin:0;color:var(--az)">⚙ Colores, abreviaturas y medidas</h3><span id="estCfOk" style="color:#166534;font-size:12px;opacity:0;transition:opacity .3s"></span><button class="b" onclick="estConfCerrar();toast('✓ Colores guardados')">✓ Listo</button></div><div style="padding:12px 16px"><p class="muted" style="margin:0 0 8px;font-size:12px">Los cambios se guardan al instante y se ven en el plano a la izquierda. Familia: tiñe sus subfamilias y productos. Subfamilia: tiñe sus productos.</p>${estConfHTML().replace('<div class="grid2">', '<div>')}</div></div>`; }
-function estConfEsc(ev){ if (ev.key === 'Escape') estConfCerrar(); }
+function estConfRender(){ const m = $('#estConf'); if (!m) return; const sc = m.firstChild ? m.firstChild.scrollTop : 0;
+  m.innerHTML = `<div style="background:#fff;width:100%;height:100%;overflow:auto;box-shadow:-6px 0 24px #0003;border-left:1px solid #d1d5db"><div style="position:sticky;top:0;background:#fff;z-index:1;padding:10px 12px;border-bottom:1px solid #e5e7eb">
+    <div class="row" style="align-items:center;gap:8px;margin:0"><h3 style="flex:1;margin:0;color:var(--az)">⚙ Colores y medidas</h3><span id="estCfOk" style="color:#166534;font-size:12px;opacity:0;transition:opacity .3s"></span><button class="b" onclick="estConfCerrar()">✓ Listo</button></div>
+    <div style="display:flex;align-items:center;gap:6px;margin-top:8px"><input id="estCfQ" placeholder="🔍 Buscar familia o subfamilia" value="${esc(EST_CFQ)}" style="flex:1" oninput="EST_CFQ=this.value;estCfFiltrar()" onkeydown="if(event.key==='Escape'&&EST_CFQ){EST_CFQ='';this.value='';estCfFiltrar();event.stopPropagation()}"><button class="bx" id="estCfX" title="Limpiar" style="display:none" onclick="EST_CFQ='';$('#estCfQ').value='';estCfFiltrar()">✕</button></div></div>
+    <div style="padding:10px 12px">${estConfHTML()}</div></div>`;
+  m.firstChild.scrollTop = sc; estCfFiltrar(); }
+function estConfEsc(ev){} // el panel solo se cierra con "Listo" (no con Escape ni clic fuera)
 function estConfCerrar(){ const m = $('#estConf'); if (m) m.remove(); document.removeEventListener('keydown', estConfEsc); }
 function vEstanteriaHTML(){
   const e = estInit(), cel = estCeldas(), donde = estDonde(), modo = e.modo;
