@@ -1109,7 +1109,7 @@ function pmRender(){
     <h4 style="margin:12px 0 4px">Descripciones libres (${L.length})</h4>
     ${L.length ? `<table><thead><tr><th>#</th><th>Descripción</th><th>Familia › Subfamilia</th><th>Casilleros</th><th></th></tr></thead><tbody>${L.map(([c, p]) => `<tr><td class="muted">${p.n}</td><td style="min-width:240px">${esc(p.d || c)}<div class="muted" style="font-size:11px">${esc(c)} · etiqueta: ${esc(p.lab)}</div></td>
       <td class="muted" style="font-size:12px">${esc(p.f)} › ${esc(p.s)}</td><td style="font-size:12px;max-width:170px">${D[c] ? D[c].join(', ') : '<span class="muted">sin ubicar</span>'}</td>
-      <td style="white-space:nowrap"><input type="color" value="${p.col || '#dddddd'}" title="Color de este producto" style="width:30px;height:24px;padding:0;border:1px solid #999;vertical-align:middle" onchange="estColProd('${esc(c)}',this.value)"> ${id ? `<button class="b2" title="Poner en ${esc(id)}" onclick="pmPoner('${esc(c)}')">＋ ${esc(id)}</button> ` : ''}<button class="b2" title="Cambiar descripción" onclick="pmEditar('${esc(c)}')">✏</button> <button class="bx" title="Borrar" onclick="pmBorrar('${esc(c)}')">🗑</button></td></tr>`).join('')}</tbody></table>` : '<p class="muted">Todavía no hay descripciones libres.</p>'}
+      <td style="white-space:nowrap"><button type="button" title="Color de este producto" style="width:30px;height:24px;background:${p.col || '#dddddd'};display:inline-block;border:1px solid #888;border-radius:4px;cursor:pointer;padding:0;vertical-align:middle" onclick="colorPick(this,'${p.col || '#dddddd'}',v=>estColProd('${esc(c)}',v))"></button> ${id ? `<button class="b2" title="Poner en ${esc(id)}" onclick="pmPoner('${esc(c)}')">＋ ${esc(id)}</button> ` : ''}<button class="b2" title="Cambiar descripción" onclick="pmEditar('${esc(c)}')">✏</button> <button class="bx" title="Borrar" onclick="pmBorrar('${esc(c)}')">🗑</button></td></tr>`).join('')}</tbody></table>` : '<p class="muted">Todavía no hay descripciones libres.</p>'}
   </div>`;
 }
 function pmCasillero(raw){
@@ -1449,6 +1449,35 @@ function estDesmarcar(c){
   delete e.prods[c]; Object.keys(e.celdas).forEach(id => estQuitar(id, c));
   guardar(); vEstanteria();
 }
+/* Selector de color propio: colores predefinidos, recientes, código y "Más colores" (rueda). Queda abierto hasta clic fuera o ✓ */
+const PAL_BASE = (() => { const hs = [0, 20, 40, 55, 90, 140, 175, 200, 225, 265, 300, 330], ls = [88, 76, 64, 52, 40, 28], out = [];
+  ls.forEach(l => { out.push(hsl2hex(0, 0, Math.round(l + (l > 50 ? 6 : -10)))); hs.forEach(h => out.push(hsl2hex(h, l > 80 ? 70 : 62, l))); }); return out; })();
+let PAL_CB = null, PAL_BTN = null;
+function colorPick(btn, cur, cb){
+  colorPickCerrar(); PAL_CB = cb; PAL_BTN = btn; const r = btn.getBoundingClientRect(), rec = (() => { try { return JSON.parse(localStorage.getItem('bodega_col_rec') || '[]'); } catch(e){ return []; } })();
+  const d = document.createElement('div'); d.id = 'estPal';
+  const W = 13 * 22 + 24, x = Math.max(8, Math.min(window.innerWidth - W - 8, r.left)), yb = r.bottom + 6, alto = 300, y = yb + alto > window.innerHeight ? Math.max(8, r.top - alto - 6) : yb;
+  d.style.cssText = `position:fixed;left:${x}px;top:${y}px;width:${W}px;z-index:300;background:#fff;border:1px solid #cbd5e1;border-radius:10px;box-shadow:0 8px 24px #0003;padding:10px`;
+  const sw = c => `<button type="button" title="${c}" onclick="colorPickSel('${c}')" style="width:20px;height:20px;margin:1px;border:${c.toLowerCase() === String(cur).toLowerCase() ? '2px solid #111' : '1px solid #0002'};border-radius:4px;background:${c};cursor:pointer;padding:0"></button>`;
+  d.innerHTML = `<div style="display:flex;flex-wrap:wrap">${PAL_BASE.map(sw).join('')}</div>
+    ${rec.length ? `<div class="muted" style="font-size:11px;margin:6px 0 2px">Recientes</div><div style="display:flex;flex-wrap:wrap">${rec.map(sw).join('')}</div>` : ''}
+    <div style="display:flex;align-items:center;gap:6px;margin-top:8px"><span id="palPrev" style="width:24px;height:24px;border-radius:4px;border:1px solid #888;background:${cur}"></span>
+      <input id="palHex" value="${cur}" maxlength="7" style="width:84px;font-family:monospace" onkeydown="if(event.key==='Enter'){colorPickHex();event.preventDefault()}" oninput="const v=this.value.trim();if(/^#?[0-9a-f]{6}$/i.test(v))$('#palPrev').style.background=(v[0]==='#'?v:'#'+v)">
+      <label class="b2" style="margin:0;padding:3px 8px;cursor:pointer;font-size:12px">Más colores…<input type="color" value="${/^#[0-9a-f]{6}$/i.test(cur) ? cur : '#888888'}" style="position:absolute;opacity:0;width:1px;height:1px" onchange="colorPickSel(this.value)"></label>
+      <span style="flex:1"></span><button type="button" class="b" style="padding:3px 10px" onclick="colorPickHex()">✓</button></div>`;
+  document.body.appendChild(d);
+  setTimeout(() => document.addEventListener('mousedown', colorPickFuera, true), 0);
+}
+function colorPickFuera(ev){ const d = $('#estPal'); if (d && !d.contains(ev.target)) colorPickCerrar(); }
+function colorPickCerrar(){ const d = $('#estPal'); if (d) d.remove(); document.removeEventListener('mousedown', colorPickFuera, true); }
+function colorPickHex(){ let v = ($('#palHex') || {}).value || ''; v = v.trim(); if (/^[0-9a-f]{6}$/i.test(v)) v = '#' + v; if (!/^#[0-9a-f]{6}$/i.test(v)) return toast('Código de color no válido (ej: #3366cc)'); colorPickSel(v); colorPickCerrar(); }
+function colorPickSel(c){
+  try { const r = JSON.parse(localStorage.getItem('bodega_col_rec') || '[]').filter(x => x.toLowerCase() !== c.toLowerCase()); r.unshift(c); localStorage.setItem('bodega_col_rec', JSON.stringify(r.slice(0, 13))); } catch(e){}
+  const pv = $('#palPrev'), hx = $('#palHex'); if (pv) pv.style.background = c; if (hx) hx.value = c;
+  const d = $('#estPal'); if (d) d.querySelectorAll('button[title^="#"]').forEach(b => b.style.border = b.title.toLowerCase() === c.toLowerCase() ? '2px solid #111' : '1px solid #0002');
+  if (PAL_BTN && PAL_BTN.isConnected) PAL_BTN.style.background = c;
+  if (PAL_CB) PAL_CB(c);
+}
 let EST_CV = null;
 function estColorVivo(tipo, k, v, fin){ // aplica y guarda al instante; el plano se redibuja enseguida (sin esperar a cerrar el selector)
   const e = S.estanteria; if (tipo === 'f'){ e.famCol[k] = v; estTonos(e, k, null); } else { e.subCol[k] = v; (e.subFijo = e.subFijo || {})[k] = true; estTonos(e, null, k); }
@@ -1660,7 +1689,7 @@ let EST_CFAB = { f: true, s: false, h: false, m: false }, EST_CFQ = '';
 function estConfHTML(){
   const e = estInit(), fams = estFams(e), subs = [...new Set(Object.values(e.prods).map(p => subKey(p.f, p.s)))].sort();
   const sec = (k, t, n, body) => `<details ${EST_CFAB[k] ? 'open' : ''} ontoggle="EST_CFAB['${k}']=this.open" style="border:1px solid #e5e7eb;border-radius:8px;margin-bottom:8px"><summary style="cursor:pointer;padding:8px 10px;font-weight:600;color:var(--az)">${t}${n != null ? ` <span class="muted" style="font-weight:400">(${n})</span>` : ''}</summary><div style="padding:0 10px 10px">${body}</div></details>`;
-  const fila = (q, col, on, nom, ab, onab) => `<tr data-q="${esc(norm(q))}"><td style="width:44px"><input type="color" value="${col}" style="width:36px;padding:0" oninput="${on}(this.value)" onchange="${on}(this.value,true)"></td><td>${nom}</td><td style="width:90px"><input value="${esc(ab)}" style="width:80px" onchange="${onab}"></td></tr>`;
+  const fila = (q, col, on, nom, ab, onab) => `<tr data-q="${esc(norm(q))}"><td style="width:44px"><button type="button" style="width:36px;height:24px;background:${col};display:inline-block;border:1px solid #888;border-radius:4px;cursor:pointer;padding:0;vertical-align:middle" onclick="colorPick(this,'${col}',v=>${on}(v,true))"></button></td><td>${nom}</td><td style="width:90px"><input value="${esc(ab)}" style="width:80px" onchange="${onab}"></td></tr>`;
   return sec('f', 'Familias', fams.length, `<table class="cfT"><tbody>${fams.map(f => fila(f, e.famCol[f], `((v,x)=>estColorVivo('f','${esc(f)}',v,x))`, esc(f), e.famAb[f], `estColorEdit('fa','${esc(f)}',this.value)`)).join('')}</tbody></table>`)
     + sec('s', 'Subfamilias', subs.length, `<table class="cfT"><tbody>${subs.map(k => fila(k.replace('|', ' ') , e.subCol[k], `((v,x)=>estColorVivo('s','${esc(k)}',v,x))`, `<span class="muted">${esc(k.split('|')[0])} ›</span> ${esc(k.split('|')[1] || '')}`, e.subAb[k], `estColorEdit('sa','${esc(k)}',this.value)`)).join('')}</tbody></table>
       <button class="b2" style="margin-top:6px" onclick="estRecolorear()">🎨 Regenerar colores automáticos</button>`)
@@ -1713,7 +1742,7 @@ function vEstanteriaHTML(){
         <div class="row" style="margin:6px 0;flex-wrap:wrap"><button class="b" onclick="estUbAbrir(null,'${c1.id}')">＋ Agregar producto aquí</button><button class="b2" onclick="pmAbrir('${c1.id}')" title="Poner una descripción que no está en la base">✍ Descripción libre aquí</button>${l.length ? `<button class="b2" onclick="estVaciar()">Vaciar</button>` : ''}<button class="b2" onclick="EST_SEL=[];vEstanteria()">Quitar selección</button></div>
         ${l.length ? `<table><thead><tr><th>Orden</th><th></th><th>Producto</th><th>Cantidad</th><th>Caben (holgura ${fmt(estHolg() * 10, 0)} mm)</th><th>También en</th><th></th></tr></thead><tbody>${l.map((c, i) => { const p = e.prods[c] || { f: '?', s: '?', n: '?', col: '#ddd' };
           return `<tr ${EST_MOV && EST_MOV.c === c ? 'style="background:#fff3c4"' : ''}><td style="white-space:nowrap"><button class="b2" title="Más a la izquierda" onclick="estMoverEnCelda('${c1.id}',${i},-1)">◀</button><button class="b2" title="Más a la derecha" onclick="estMoverEnCelda('${c1.id}',${i},1)">▶</button></td>
-            <td style="white-space:nowrap"><input type="color" value="${colDe(p) || '#dddddd'}" title="Cambiar el color de este producto" style="width:34px;height:26px;padding:0;border:1px solid #999;cursor:pointer" onchange="estColProd('${esc(c)}',this.value)">${p.colFijo ? `<button class="b2" style="padding:2px 6px" title="Volver al color automático" onclick="estColProd('${esc(c)}','')">↺</button>` : ''}</td><td><b>${esc(c)}</b> ${esc(estDesc(c))}<br>${famBadge(c)} ${famBtn(c)}</td>
+            <td style="white-space:nowrap"><button type="button" title="Cambiar el color de este producto" style="width:34px;height:26px;background:${colDe(p) || '#dddddd'};display:inline-block;border:1px solid #888;border-radius:4px;cursor:pointer;padding:0;vertical-align:middle" onclick="colorPick(this,'${colDe(p) || '#dddddd'}',v=>estColProd('${esc(c)}',v))"></button>${p.colFijo ? `<button class="b2" style="padding:2px 6px" title="Volver al color automático" onclick="estColProd('${esc(c)}','')">↺</button>` : ''}</td><td><b>${esc(c)}</b> ${esc(estDesc(c))}<br>${famBadge(c)} ${famBtn(c)}</td>
             <td><input type="number" min="0" step="any" placeholder="—" value="${(e.cant[c1.id] || {})[c] != null ? e.cant[c1.id][c] : ''}" style="width:90px" onchange="estCant('${c1.id}','${esc(c)}',this.value)"></td>
             <td>${estCabeTxt(c, c1, l.length, (e.cant[c1.id] || {})[c])}${l.length > 1 ? `<div class="muted" style="font-size:11px">con ${l.length} productos, cada uno usa 1/${l.length} del ancho</div>` : ''}</td>
             <td>${(donde[c] || []).filter(x => x !== c1.id).map(x => `📍${x}${estQtxt((e.cant[x] || {})[c])}`).join(', ') || '—'}</td>
