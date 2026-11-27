@@ -58,6 +58,20 @@ td input,td select{width:100%;padding:4px}
 .leyenda{background:#fff;padding:6px 8px;border:1px solid #999;border-radius:5px;font-size:11px;line-height:1.5;max-width:270px}
 .sw{width:12px;height:12px;border-radius:50%;display:inline-block;border:2px solid #0003;vertical-align:middle}
 .pf{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;padding:10px 12px;margin-top:8px;border:1px solid var(--bd);border-radius:8px;background:#f8fafc}.pf label{display:flex;flex-direction:column;font-size:12px;color:var(--mu);gap:3px}.pf input[type=number]{width:84px}.pfn{display:inline-block;min-width:16px;padding:0 5px;margin-left:5px;border-radius:9px;background:var(--az);color:#fff;font-size:11px;line-height:16px;text-align:center}.pfn:empty{display:none}.pfbar{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:10px 0 4px}.titulo-print{display:none}@media print{.titulo-print{display:block;font-size:15px;font-weight:bold;margin:0 0 4px}}
+nav{display:block;padding:8px 12px 0}
+.catbar{display:flex;gap:4px;margin:0 auto 8px;background:rgba(255,255,255,.13);border-radius:999px;padding:4px;width:max-content;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.catbar button{border:0;background:none;color:#dbe4f3;padding:7px 18px;border-radius:999px;font-size:14px;cursor:pointer;white-space:nowrap;transition:background .15s}
+.catbar button:hover{background:rgba(255,255,255,.12)}
+.catbar button.on{background:#fff;color:var(--az);font-weight:600;box-shadow:0 1px 4px #0003}
+.subbar{display:flex;justify-content:center;gap:2px;flex-wrap:wrap}
+@media(max-width:700px){.subbar{flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start}.catbar button{padding:7px 12px}}
+.subbar button{background:none;border:0;color:#dbe4f3;padding:8px 16px;cursor:pointer;font-size:14px;border-radius:6px 6px 0 0;white-space:nowrap}
+.subbar button.on{background:#eef1f6;color:var(--az);font-weight:bold}
+.colh{cursor:pointer;user-select:none}.colh::before{content:'▾';display:inline-block;width:16px;color:var(--mu);font-size:12px}.card.cerr>.colh::before{content:'▸'}.card.cerr>.colh{margin-bottom:0}.card.cerr>*:not(.colh){display:none!important}
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-bottom:14px}
+.kpi{background:#fff;border:1px solid var(--bd);border-radius:10px;padding:12px 14px;cursor:pointer;transition:box-shadow .15s,transform .15s}.kpi:hover{box-shadow:0 3px 10px #0002;transform:translateY(-1px)}
+.kpi .v{font-size:26px;font-weight:700;color:var(--az);line-height:1.1}.kpi .t{font-size:12px;color:var(--mu)}.kpi.alerta .v{color:var(--wa)}.kpi.err .v{color:var(--er)}
+.accs{display:flex;flex-wrap:wrap;gap:8px}.acc{display:flex;align-items:center;gap:8px;background:#f8faff;border:1px solid #d6e0f0;border-radius:8px;padding:9px 14px;cursor:pointer;font-size:14px;color:var(--az)}.acc:hover{background:#eef3fb}.acc span{font-size:18px}
 </style>
 <link rel="manifest" href="manifest.json">
 <script src="catalogo.js"></script>
@@ -122,7 +136,7 @@ function sha256(ascii){
 let S = null;            // estado completo
 let USER = null;         // usuario conectado
 let fileHandle = null;   // archivo de datos en el pendrive (Chrome)
-let TAB = 'ruta';
+let TAB = (location.hash.slice(1) || localStorage.getItem('bodega_tab') || 'inicio'); // se recuerda la página al recargar
 
 function nuevoEstado(){
   return {
@@ -353,19 +367,85 @@ function login(){
 function logout(){ remuBloquear(); USER = null; sessionStorage.removeItem('desp_user'); pantallaInicio(); }
 
 /* ===================== NAVEGACIÓN ===================== */
-const TABS = [['ruta','🚚 Armar reparto'],['productos','⚖ Peso de productos'],['guardados','🗂 Repartos guardados'],['flota','🚛 Camiones'],['mapa','🗺 Mapa'],['sectores','📍 Sectores'],['personal','👥 Personal'],['turnos','📅 Turnos'],['estanteria','🗄 Estantería'],['etiquetado','🏷 Etiquetado'],['admin','⚙ Administración']];
+const GRUPOS = [
+  { k: 'inicio', l: '🏠 Inicio', tabs: [['inicio', 'Inicio']] },
+  { k: 'despacho', l: '🚚 Despacho', tabs: [['ruta', 'Armar reparto'], ['guardados', 'Repartos'], ['flota', 'Camiones'], ['mapa', 'Mapa'], ['sectores', 'Sectores']] },
+  { k: 'bodega', l: '📦 Bodega', tabs: [['estanteria', 'Estantería'], ['productos', 'Productos'], ['etiquetado', 'Etiquetado']] },
+  { k: 'personal', l: '👥 Personal', tabs: [['personal', 'Trabajadores'], ['turnos', 'Turnos']] },
+  { k: 'admin', l: '⚙ Admin', admin: true, tabs: [['admin', 'Administración']] }
+];
+const TABS = GRUPOS.flatMap(g => g.tabs.map(t => [t[0], t[1], g.k]));
+const grupoDe = t => (GRUPOS.find(g => g.tabs.some(x => x[0] === t)) || GRUPOS[0]);
+function colapsables(){
+  document.querySelectorAll('#main .card > h2:first-child').forEach(h => {
+    if (h.dataset.col) return; h.dataset.col = 1; const card = h.parentElement, key = 'bodega_col_' + TAB + '_' + h.textContent.replace(/\(\d+\)|\d+/g, '').trim().slice(0, 40);
+    h.classList.add('colh'); try { if (localStorage.getItem(key) === '1') card.classList.add('cerr'); } catch(e){}
+    h.addEventListener('click', ev => { if (ev.target.closest('button,a,input,select,label,textarea')) return; card.classList.toggle('cerr'); try { localStorage.setItem(key, card.classList.contains('cerr') ? '1' : ''); } catch(e){} });
+  });
+}
+(() => { let t = null; const m = document.getElementById('main'); if (m && window.MutationObserver) new MutationObserver(() => { clearTimeout(t); t = setTimeout(colapsables, 30); }).observe(m, { childList: true, subtree: true }); })();
+function irA(t){ if (t === TAB){ window.scrollTo(0, 0); return; } TAB = t; render(); window.scrollTo(0, 0); }
+function irGrupo(k){ const g = GRUPOS.find(x => x.k === k); let t = localStorage.getItem('bodega_ult_' + k); if (!g.tabs.some(x => x[0] === t)) t = g.tabs[0][0]; irA(t); }
+window.addEventListener('popstate', () => { const t = location.hash.slice(1); if (USER && t && t !== TAB){ TAB = t; render(); } });
 function render(){
   if (!USER){ pantallaInicio(); return; }
   $('#who').textContent = USER.nombre + (USER.rol === 'admin' ? ' (admin)' : '');
   $('#btnOut').classList.remove('hide');
   $('#filestate').innerHTML = fileHandle ? '💾 ' + esc(fileHandle.name) : (fsOK ? '⚠ Sin archivo en pendrive' : '💻 Guardado en este computador');
   $('#nav').classList.remove('hide');
-  if (!TABS.some(x => x[0] === TAB) && !(TAB === 'remu' && USER.rol === 'admin')) TAB = 'ruta';
+  if (!TABS.some(x => x[0] === TAB) && !(TAB === 'remu' && USER.rol === 'admin')) TAB = 'inicio';
+  if (TAB === 'admin' && USER.rol !== 'admin') TAB = 'inicio';
   if (TAB !== 'remu') remuBloquear();
-  $('#nav').innerHTML = TABS.filter(x => x[0] !== 'admin' || USER.rol === 'admin').map(([k, l]) => `<button class="${k === TAB ? 'on' : ''}" onclick="TAB='${k}';render()">${l}</button>`).join('');
-  try { ({ ruta: vRuta, productos: vProductos, guardados: vGuardados, flota: vFlota, sectores: vSectores, mapa: vMapa, personal: vPersonal, turnos: vTurnos, estanteria: vEstanteria, etiquetado: vEtiquetado, admin: vAdmin, remu: vRemu })[TAB](); }
+  const g = TAB === 'remu' ? GRUPOS.find(x => x.k === 'admin') : grupoDe(TAB);
+  if (TAB !== 'remu'){ try { localStorage.setItem('bodega_tab', TAB); localStorage.setItem('bodega_ult_' + g.k, TAB); } catch(e){} if (location.hash !== '#' + TAB) history.pushState(null, '', '#' + TAB); }
+  $('#nav').innerHTML = `<div class="catbar">${GRUPOS.filter(x => !x.admin || USER.rol === 'admin').map(x => `<button class="${x.k === g.k ? 'on' : ''}" onclick="irGrupo('${x.k}')">${x.l}</button>`).join('')}</div>
+    ${g.tabs.length > 1 ? `<div class="subbar">${g.tabs.map(([k, l]) => `<button class="${k === TAB ? 'on' : ''}" onclick="irA('${k}')">${l}</button>`).join('')}</div>` : '<div style="height:8px"></div>'}`;
+  try { ({ inicio: vInicio, ruta: vRuta, productos: vProductos, guardados: vGuardados, flota: vFlota, sectores: vSectores, mapa: vMapa, personal: vPersonal, turnos: vTurnos, estanteria: vEstanteria, etiquetado: vEtiquetado, admin: vAdmin, remu: vRemu })[TAB](); }
   catch(err){ console.error(err); mostrarFallo(err, true); }
 }
+
+/* ===================== INICIO (dashboard) ===================== */
+const ACCESOS = [['ruta', '🚚', 'Armar reparto'], ['guardados', '🗂', 'Repartos'], ['flota', '🚛', 'Camiones'], ['mapa', '🗺', 'Mapa'], ['sectores', '📍', 'Sectores'], ['estanteria', '🗄', 'Estantería'], ['productos', '⚖', 'Productos'], ['etiquetado', '🏷', 'Etiquetado'], ['personal', '👥', 'Trabajadores'], ['turnos', '📅', 'Turnos'], ['imp_est', '🖨', 'Imprimir estantería'], ['csv', '🔄', 'Actualizar productos (CSV)', true], ['resp', '⬇', 'Descargar respaldo'], ['admin', '⚙', 'Administración', true]];
+let INI_ED = false;
+function acceso(k){
+  if (k === 'imp_est'){ irA('estanteria'); setTimeout(() => { if (typeof estDlgImprimir === 'function') estDlgImprimir(); }, 60); return; }
+  if (k === 'csv'){ irA('productos'); setTimeout(() => { const h = [...document.querySelectorAll('#main h2')].find(x => /CSV/.test(x.textContent)); if (h){ h.parentElement.classList.remove('cerr'); h.scrollIntoView({ behavior: 'smooth' }); } }, 120); return; }
+  if (k === 'resp') return exportar();
+  irA(k);
+}
+function vInicio(){
+  const rep = S.repartos || [], porSalir = rep.filter(r => r.estado === 'Guardado' || r.estado === 'En espera'), enRuta = rep.filter(r => r.estado === 'Enviado' || r.estado === 'En ruta' || r.estado === 'En reparto');
+  const veh = (S.vehicles || []).filter(v => v.activo), oc = ocupados(), libres = veh.filter(v => !oc.has(v.id)).length;
+  let occ = 0, tot = 0, huerf = 0; try { const e = estInit(), cel = estCeldas(); tot = cel.length; occ = cel.filter(c => (e.celdas[c.id] || []).length).length; huerf = Object.values(e.celdas).flat().filter(estHuerf).length; } catch(err){}
+  const nb = PRODUCTOS.filter(p => p[9] !== 'S').length, pers = (S.personal || []).filter(p => p.nombre).length, adm = USER.rol === 'admin';
+  const acc = (S.config.accesos && S.config.accesos.length ? S.config.accesos : ['ruta', 'guardados', 'estanteria', 'productos', 'imp_est', 'resp']).filter(k => ACCESOS.some(a => a[0] === k && (!a[3] || adm)));
+  const kpi = (v, t, go, cls) => `<div class="kpi ${cls || ''}" onclick="${go}"><div class="v">${v}</div><div class="t">${t}</div></div>`;
+  const hoyTxt = new Date().toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' });
+  $('#main').innerHTML = `<div style="display:flex;align-items:baseline;gap:10px;margin:2px 2px 12px"><h2 style="margin:0;color:var(--az);font-size:20px">Hola, ${esc(USER.nombre.split(' ')[0])}</h2><span class="muted">${esc(hoyTxt)}</span></div>
+  <div class="kpis">
+    ${kpi(porSalir.length, 'Repartos por salir', "irA('guardados')", porSalir.length ? 'alerta' : '')}
+    ${kpi(enRuta.length, 'Repartos en ruta', "irA('guardados')")}
+    ${kpi(`${libres}<span style="font-size:15px;color:var(--mu)"> / ${veh.length}</span>`, 'Camiones disponibles', "irA('flota')", veh.length && !libres ? 'err' : '')}
+    ${kpi(`${occ}<span style="font-size:15px;color:var(--mu)"> / ${tot}</span>`, 'Casilleros ocupados', "irA('estanteria')")}
+    ${huerf ? kpi(huerf, 'Ubicados que ya no están en la ferre', "irA('estanteria')", 'err') : ''}
+    ${kpi(nb.toLocaleString('es-CL'), 'Productos de bodega', "irA('productos')")}
+    ${kpi(pers, 'Trabajadores', "irA('personal')")}
+  </div>
+  <div class="grid2">
+    <div class="card"><h2>Repartos por salir</h2>
+      ${porSalir.length ? `<table><thead><tr><th>Fecha</th><th>Camión</th><th class="num">Facturas</th><th class="num">kg</th><th></th></tr></thead><tbody>${porSalir.slice().reverse().slice(0, 8).map(r => { let kg = 0, nf = 0; try { const fs = factsRep(r); nf = fs.length; kg = sumar(fs).kg; } catch(e){} return `<tr><td>${esc(r.fecha || '')}</td><td>${esc(nomVeh(r))}</td><td class="num">${nf}</td><td class="num">${fmt(kg, 0)}</td><td><button class="b2" style="padding:2px 10px" onclick="RESUMEN='${r.id}';irA('guardados')">Ver</button></td></tr>`; }).join('')}</tbody></table>${porSalir.length > 8 ? `<p class="muted">y ${porSalir.length - 8} más…</p>` : ''}` : '<p class="muted">No hay repartos pendientes de salir.</p>'}
+      <div style="margin-top:8px"><button class="b" onclick="irA('ruta')">🚚 Armar reparto</button></div></div>
+    <div class="card"><h2>Accesos directos</h2>
+      ${INI_ED ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:4px">${ACCESOS.filter(a => !a[3] || adm).map(([k, ic, l]) => `<label style="flex-direction:row;align-items:center;gap:6px;color:inherit;font-size:14px"><input type="checkbox" ${acc.includes(k) ? 'checked' : ''} onchange="iniAcc('${k}',this.checked)"> ${ic} ${l}</label>`).join('')}</div><button class="b" style="margin-top:8px" onclick="INI_ED=false;vInicio()">✓ Listo</button>`
+        : `<div class="accs">${acc.map(k => { const a = ACCESOS.find(x => x[0] === k); return `<div class="acc" onclick="acceso('${k}')"><span>${a[1]}</span>${a[2]}</div>`; }).join('')}</div><div style="margin-top:10px"><a href="#" class="muted" style="font-size:12px" onclick="INI_ED=true;vInicio();return false">✎ Elegir accesos</a></div>`}</div>
+  </div>
+  <div class="card"><h2>Configuración y datos</h2>
+    <p style="margin-top:0">${fileHandle ? `Guardando automáticamente en <b>${esc(fileHandle.name)}</b>.` : fsOK ? 'Este computador aún no está guardando en el pendrive.' : 'En este navegador los datos se guardan en el computador; usa “Descargar datos” para llevarlos al pendrive.'}</p>
+    <div class="row">${fsOK ? '<button class="b2" onclick="crearArchivo()">💾 Crear archivo de datos nuevo</button>' : ''}<button class="b2" onclick="abrirArchivo()">📂 Abrir datos del pendrive</button><button class="b2" onclick="exportar()">⬇ Descargar datos</button></div>
+    ${adm ? `<div class="row" style="margin-top:10px"><label>Llenado máximo de los camiones (% del volumen)<input id="cL" value="${S.config.llenado}" style="width:80px"></label><button class="b" onclick="S.config.llenado=n($('#cL').value,85);guardar();toast('Configuración guardada')">Guardar</button></div>
+    <p class="muted" style="margin-bottom:0">Lectura de facturas: ${API_KEY ? 'con IA (Claude).' : 'lectura básica (PDF con texto y OCR para capturas).'}</p>` : ''}</div>`;
+}
+function iniAcc(k, on){ const a = (S.config.accesos && S.config.accesos.length ? S.config.accesos : ['ruta', 'guardados', 'estanteria', 'productos', 'imp_est', 'resp']).filter(x => x !== k); if (on) a.push(k); S.config.accesos = ACCESOS.map(x => x[0]).filter(x => a.includes(x)); guardar(); }
 
 /* ===================== VEHÍCULOS: ¿CABE? ===================== */
 const ocupados = () => new Set(S.repartos.filter(r => r.estado === 'Enviado').map(r => r.vehiculo));
@@ -416,7 +496,7 @@ function vRuta(){
     <div class="card"><h2>1. Agregar factura</h2>
       <div id="paste" onclick="elegirArchivos()" ondragover="event.preventDefault()" ondrop="soltar(event)">
         ${ARCH ? (ARCH.tipo === 'pdf' ? `<b>📄 ${esc(ARCH.nombre)}</b>` : `<img src="${ARCH.data}">`) :
-          '<b>Sube el PDF o la captura de la factura</b> (puedes elegir varias a la vez)<br>Haz clic aquí, arrastra los archivos, o presiona <u>Impr Pant</u> y luego <u>Ctrl+V</u>'}
+          '<b>Sube el PDF o la captura de la factura</b> (puedes elegir varias a la vez)'}
       </div>
       <input type="file" id="fileIn" accept="image/*,application/pdf" multiple class="hide" onchange="archivosElegidos(this.files);this.value=''">
       <div class="row" style="margin-top:8px">
@@ -2255,7 +2335,7 @@ function vMapa(){
       <div id="mpanel" class="noprint" style="width:270px;max-height:72vh;overflow:auto;font-size:12px"></div>
       <div id="mapa" style="flex:1;height:72vh;border:1px solid var(--bd);border-radius:6px"></div>
     </div></div>`;
-  asegurarLeaflet().then(iniciarMapa).catch(() => { $('#mmsg').innerHTML = '<span class="err">No se pudo cargar el mapa (revisa internet).</span>'; });
+  asegurarLeaflet().then(() => { if ($('#mapa')) iniciarMapa(); }).catch(() => { const m = $('#mmsg'); if (m) m.innerHTML = '<span class="err">No se pudo cargar el mapa (revisa internet).</span>'; });
 }
 function iniciarMapa(){
   if (MAPA){ MAPA.remove(); MAPA = null; }
@@ -2753,7 +2833,7 @@ function ptAplicar(){
 }
 
 function vProductos(){
-  $('#main').innerHTML = `<div class="card"><h2>Peso teórico de productos</h2>
+  $('#main').innerHTML = `<div class="card"><h2>🔎 Consulta de productos</h2>
     <div class="row"><label style="flex:1">Código o palabras de la descripción<input id="q" placeholder="ej: terciado 15mm, 250125, cemento" oninput="buscar()" autofocus></label>
     <label><span><input type="checkbox" id="qAct" checked onchange="buscar()"> Solo activos</span></label>
     <label><span><input type="checkbox" id="qEst" onchange="buscar()"> Solo estantería</span></label></div>
@@ -3361,16 +3441,7 @@ function vAdmin(){
     <td><input type="checkbox" ${u.activo ? 'checked' : ''} ${u.id === USER.id ? 'disabled' : ''} onchange="S.users[${i}].activo=this.checked;guardar()"></td><td style="white-space:nowrap"><button class="b2" onclick="cambiarClave(${i})">Cambiar clave</button> ${u.id === USER.id ? '' : `<button class="bx" title="Eliminar usuario" onclick="eliminarUsuario(${i})">✕</button>`}</td></tr>`).join('')}</tbody></table>
     <h3>Nuevo usuario</h3><div class="row"><label>Usuario<input id="nU"></label><label>Nombre<input id="nN"></label><label>Contraseña<input id="nP" type="password"></label>
     <label>Rol<select id="nR"><option value="supervisor">Supervisor</option><option value="admin">Administrador</option></select></label><button class="b" onclick="nuevoUsuario()">Crear</button></div></div>
-  <div class="card"><h2>Configuración</h2>
-    <div class="row"><label>Llenado máximo de los camiones (% del volumen)<input id="cL" value="${S.config.llenado}" size="4"></label>
-    <button class="b" onclick="S.config.llenado=n($('#cL').value,85);guardar();toast('Configuración guardada')">Guardar</button></div>
-    <p class="muted">Lectura de facturas: ${API_KEY ? 'con IA (Claude).' : 'lectura básica (PDF con texto y OCR para capturas). La lectura con IA se activará cuando se incorpore la clave de API.'}</p></div>
-  <div class="card"><h2>Datos</h2>
-    <p>${fileHandle ? `Guardando automáticamente en <b>${esc(fileHandle.name)}</b>.` : fsOK ? 'Este computador aún no está guardando en el pendrive.' : 'En este navegador (Firefox) los datos se guardan en el computador; usa “Descargar datos” para llevarlos al pendrive.'}</p>
-    <div class="row">${fsOK ? '<button class="b2" onclick="crearArchivo()">💾 Crear archivo de datos nuevo</button>' : ''}<button class="b2" onclick="abrirArchivo()">📂 Abrir datos del pendrive</button><button class="b2" onclick="exportar()">⬇ Descargar datos</button></div></div>
-  <div class="card"><h2>Maestro de productos</h2>
-    <p class="muted">${PRODUCTOS.length} productos incluidos · ${Object.keys(S.overrides).length} corregidos por ti. Para cargar correcciones masivas, importa un CSV con columnas: codigo;descripcion;peso_kg;largo_m;ancho_m;alto_m</p>
-    <input type="file" accept=".csv,.txt" onchange="importarMaestro(this.files[0])"></div></div>
+</div>
   ${USER.rol === 'admin' ? `<p style="grid-column:1/-1;text-align:right;margin:2px 8px"><a href="#" onclick="TAB='remu';render();return false" style="color:#c3c8d2;font-size:11px;text-decoration:none">remuneración</a></p>` : ''}`;
 }
 function eliminarUsuario(i){
@@ -3387,12 +3458,6 @@ function nuevoUsuario(){
   guardar(); toast('Usuario creado'); vAdmin();
 }
 function cambiarClave(i){ const p = prompt('Nueva contraseña para ' + S.users[i].u + ' (mínimo 4 caracteres)'); if (!p || p.length < 4) return; S.users[i].salt = uid(); S.users[i].hash = hashPass(S.users[i].salt, p); guardar(); toast('Contraseña cambiada'); }
-async function importarMaestro(f){
-  if (!f) return; const txt = await f.text(); let k = 0;
-  txt.split(/\r?\n/).slice(1).forEach(ln => { const c = ln.split(/[;\t]/); if (c.length < 6 || !c[0].trim()) return; const [l, a, h] = [n(c[3]), n(c[4]), n(c[5])];
-    S.overrides[norm(c[0].trim())] = { desc: c[1].trim(), peso: n(c[2]), largo: l, ancho: a, alto: h, vol: +(l * a * h).toFixed(4), por: USER.u, fecha: hoy() }; k++; });
-  guardar(); toast(k + ' productos importados'); vAdmin();
-}
 
 /* ===================== INICIO ===================== */
 function mostrarFallo(err, enVista){
@@ -3402,7 +3467,7 @@ function mostrarFallo(err, enVista){
     m.innerHTML = `<div class="card" style="border:2px solid #c00"><h2 style="color:#c00;margin-top:0">⚠ La app tuvo un error${enVista ? ' en esta pestaña' : ' al iniciar'}</h2>
       <p>Tus datos no se borraron. Copia este texto y envíaselo a Claude:</p>
       <pre style="white-space:pre-wrap;background:#f6f6f6;padding:8px;border-radius:6px;font-size:12px">${esc(txt)}</pre>
-      <p>${enVista ? `<button class="b" onclick="TAB='ruta';render()">🚚 Ir a Armar reparto</button> ` : '<button class="b" onclick="location.reload()">🔄 Reintentar</button> '}
+      <p>${enVista ? `<button class="b" onclick="TAB='inicio';render()">🏠 Ir al inicio</button> ` : '<button class="b" onclick="location.reload()">🔄 Reintentar</button> '}
       <button class="b2" onclick="try{const t=localStorage.getItem(STORE_KEY)||JSON.stringify(S||{});const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'application/json'}));a.download='copia_datos_bodega_'+new Date().toISOString().slice(0,10)+'.json';a.click();}catch(e){alert(e)}">💾 Descargar copia de mis datos</button>
       <button class="b2" onclick="abrirArchivo()">📂 Abrir datos del pendrive</button></p></div>`;
   } catch(e2){ document.body.insertAdjacentHTML('beforeend', '<pre style="color:#c00;padding:20px">Error: ' + String(err) + '</pre>'); }
